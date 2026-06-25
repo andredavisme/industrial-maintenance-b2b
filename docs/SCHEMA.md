@@ -1,8 +1,8 @@
 # indB2B Schema Reference
 
-> Last updated: 2026-06-25 (sessions 1–21)
+> Last updated: 2026-06-25 (sessions 1–22)
 
-## Tables (14)
+## Tables (19)
 
 ### brand_categories
 | Column | Type | Notes |
@@ -162,7 +162,7 @@ Lazy-load cache of zip pair distances. Populated on-demand by `get-distance` Edg
 | PK | (zip_from, zip_to) | |
 
 ### zip_distance_queue
-Backlog for zip pairs that could not be auto-resolved by the Edge Function. Agent reviews `pending` rows manually and pushes resolved miles to `zip_distances`.
+Backlog for zip pairs that could not be auto-resolved by the Edge Function.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -174,6 +174,57 @@ Backlog for zip pairs that could not be auto-resolved by the Edge Function. Agen
 | created_at | timestamptz | |
 | updated_at | timestamptz | auto-trigger |
 | UNIQUE | (zip_from, zip_to) | |
+
+### users _(added session 22)_
+Public company directory. `auth_user_id` nullable for Phase 2 Supabase Auth wiring (non-breaking FK added later).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| name | text NOT NULL | |
+| slug | text UNIQUE NOT NULL | |
+| actor_type | text NOT NULL | end_user / distributor / vendor |
+| website | text | |
+| email | text | |
+| auth_user_id | uuid UNIQUE | NULL until Phase 2 auth; FK to auth.users added then |
+| is_public | boolean | Default true; controls public visibility |
+| is_active | boolean | Default true |
+| created_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
+
+### user_brand_links (M:M) _(added session 22)_
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid FK → users | ON DELETE CASCADE |
+| brand_id | uuid FK → brands | ON DELETE CASCADE |
+| role | text | authorized_dealer / distributor / manufacturer_rep |
+
+### user_industry_links (M:M) _(added session 22)_
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid FK → users | ON DELETE CASCADE |
+| industry_id | uuid FK → industries | ON DELETE CASCADE |
+
+### user_equipment_links (M:M) _(added session 22)_
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | uuid FK → users | ON DELETE CASCADE |
+| equipment_type_id | uuid FK → equipment_types | ON DELETE CASCADE |
+
+### supply_chain_links _(added session 22)_
+Graph edge table representing who supplies whom. Self-loop prevented by CHECK.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| supplier_id | uuid FK → users | ON DELETE CASCADE |
+| buyer_id | uuid FK → users | ON DELETE CASCADE |
+| link_type | text NOT NULL | vendor_to_distributor / vendor_to_end_user / distributor_to_end_user / distributor_to_distributor / vendor_to_vendor / distributor_to_vendor |
+| is_active | boolean | Default true |
+| notes | text | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
+| CHECK | supplier_id <> buyer_id | No self-loops |
 
 ## Edge Functions (1)
 
@@ -220,4 +271,15 @@ Per-leg costed view. Priority chains:
 |-------|--------|
 | brand_categories, brands, industries, equipment_types, carriers | Public SELECT where is_active = true |
 | brand_aliases, brand_equipment_links, brand_industry_links, shipping_nodes, shipments, shipment_legs, zip_distances, zip_distance_queue | Public SELECT (all rows) |
+| users | Public SELECT where is_public = true |
+| supply_chain_links | Public SELECT where is_active = true |
+| user_brand_links, user_industry_links, user_equipment_links | Public SELECT (all rows) |
 | sessions | No public policy — service_role only |
+
+## Phase 2 Auth Wiring (non-breaking)
+When Supabase Auth is enabled, add this single constraint — no other changes needed:
+```sql
+ALTER TABLE "indB2B".users
+  ADD CONSTRAINT users_auth_user_id_fkey
+  FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+```

@@ -2,7 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
--- Last synced: 2026-06-25 (sessions 1–21)
+-- Last synced: 2026-06-25 (sessions 1–22)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -246,8 +246,6 @@ CREATE TRIGGER set_updated_at_zip_distances
   FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
 
 -- ---- zip_distance_queue -----------------------------------------
--- Backlog for zip pairs that could not be auto-resolved.
--- Agent reviews pending rows and pushes resolved miles to zip_distances.
 CREATE TABLE IF NOT EXISTS "indB2B".zip_distance_queue (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   zip_from   varchar(10) NOT NULL,
@@ -262,6 +260,80 @@ CREATE TABLE IF NOT EXISTS "indB2B".zip_distance_queue (
 CREATE TRIGGER set_updated_at_zip_distance_queue
   BEFORE UPDATE ON "indB2B".zip_distance_queue
   FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+-- ---- users (session 22) -----------------------------------------
+-- Public company directory. auth_user_id nullable for Phase 2 Supabase Auth wiring.
+CREATE TABLE IF NOT EXISTS "indB2B".users (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name         text NOT NULL,
+  slug         text UNIQUE NOT NULL,
+  actor_type   text NOT NULL CHECK (actor_type IN ('end_user', 'distributor', 'vendor')),
+  website      text,
+  email        text,
+  auth_user_id uuid UNIQUE,
+  is_public    boolean DEFAULT true,
+  is_active    boolean DEFAULT true,
+  created_at   timestamptz DEFAULT now(),
+  updated_at   timestamptz DEFAULT now()
+);
+
+CREATE TRIGGER users_updated_at
+  BEFORE UPDATE ON "indB2B".users
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_users_actor_type ON "indB2B".users(actor_type);
+CREATE INDEX IF NOT EXISTS idx_users_slug       ON "indB2B".users(slug);
+
+-- ---- user_brand_links (M:M, session 22) -------------------------
+CREATE TABLE IF NOT EXISTS "indB2B".user_brand_links (
+  user_id  uuid REFERENCES "indB2B".users(id) ON DELETE CASCADE,
+  brand_id uuid REFERENCES "indB2B".brands(id) ON DELETE CASCADE,
+  role     text CHECK (role IN ('authorized_dealer', 'distributor', 'manufacturer_rep')),
+  PRIMARY KEY (user_id, brand_id)
+);
+
+-- ---- user_industry_links (M:M, session 22) ----------------------
+CREATE TABLE IF NOT EXISTS "indB2B".user_industry_links (
+  user_id     uuid REFERENCES "indB2B".users(id) ON DELETE CASCADE,
+  industry_id uuid REFERENCES "indB2B".industries(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, industry_id)
+);
+
+-- ---- user_equipment_links (M:M, session 22) ---------------------
+CREATE TABLE IF NOT EXISTS "indB2B".user_equipment_links (
+  user_id           uuid REFERENCES "indB2B".users(id) ON DELETE CASCADE,
+  equipment_type_id uuid REFERENCES "indB2B".equipment_types(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, equipment_type_id)
+);
+
+-- ---- supply_chain_links (session 22) ----------------------------
+-- Graph edge table: who supplies whom, with enforced link_type.
+CREATE TABLE IF NOT EXISTS "indB2B".supply_chain_links (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  supplier_id uuid REFERENCES "indB2B".users(id) ON DELETE CASCADE,
+  buyer_id    uuid REFERENCES "indB2B".users(id) ON DELETE CASCADE,
+  link_type   text NOT NULL CHECK (link_type IN (
+    'vendor_to_distributor',
+    'vendor_to_end_user',
+    'distributor_to_end_user',
+    'distributor_to_distributor',
+    'vendor_to_vendor',
+    'distributor_to_vendor'
+  )),
+  is_active   boolean DEFAULT true,
+  notes       text,
+  created_at  timestamptz DEFAULT now(),
+  updated_at  timestamptz DEFAULT now(),
+  CHECK (supplier_id <> buyer_id)
+);
+
+CREATE TRIGGER supply_chain_links_updated_at
+  BEFORE UPDATE ON "indB2B".supply_chain_links
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_supply_chain_links_supplier ON "indB2B".supply_chain_links(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_supply_chain_links_buyer    ON "indB2B".supply_chain_links(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_supply_chain_links_type     ON "indB2B".supply_chain_links(link_type);
 
 -- ============================================================
 -- VIEWS
@@ -378,6 +450,11 @@ ALTER TABLE "indB2B".shipments             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "indB2B".shipment_legs         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "indB2B".zip_distances         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "indB2B".zip_distance_queue    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".users                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".user_brand_links      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".user_industry_links   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".user_equipment_links  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".supply_chain_links    ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "public_read_brand_categories"  ON "indB2B".brand_categories  FOR SELECT TO anon, authenticated USING (is_active = true);
 CREATE POLICY "public_read_brands"            ON "indB2B".brands            FOR SELECT TO anon, authenticated USING (is_active = true);
@@ -394,3 +471,9 @@ CREATE POLICY "public read shipment_legs"          ON "indB2B".shipment_legs    
 CREATE POLICY "public read zip_distances"          ON "indB2B".zip_distances          FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "public read zip_distance_queue"     ON "indB2B".zip_distance_queue     FOR SELECT TO anon, authenticated USING (true);
 -- sessions: NO public policy — service_role only
+
+CREATE POLICY "public_read_users"               ON "indB2B".users               FOR SELECT TO anon, authenticated USING (is_public = true);
+CREATE POLICY "public_read_user_brand_links"    ON "indB2B".user_brand_links    FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public_read_user_industry_links" ON "indB2B".user_industry_links FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public_read_user_equipment_links" ON "indB2B".user_equipment_links FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public_read_supply_chain_links"  ON "indB2B".supply_chain_links  FOR SELECT TO anon, authenticated USING (is_active = true);
