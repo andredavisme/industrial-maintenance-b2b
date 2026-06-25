@@ -9,6 +9,12 @@
 ## Current State
 🟡 **Phase 1 — Data Foundation** in progress.
 
+## Completed — 2026-06-25 (Session 3)
+- [x] Added 2 missing `brand_categories`: **Bearings** (`aff4f4c2`) and **Belts & Drives** (`d1edbdd1`)
+- [x] Seeded 6 Bearings brands: SKF, NSK, Timken, FAG, NTN, INA
+- [x] Seeded 6 Belts & Drives brands: Gates, Dayco, Browning, Dodge, Fenner, ContiTech
+- [x] `brands` table now at **43 total**, `brand_categories` at **12 total**
+
 ## Completed — 2026-06-25 (Session 2)
 - [x] Reviewed live DB state: 10 categories, 31 brands, 5 industries, 5 aliases confirmed
 - [x] Received and analyzed `data/branch-shelf.csv` — physical warehouse inventory catalog
@@ -34,8 +40,7 @@
 |----------|------|
 | 🔴 High | **Create `supplier_zip_codes` table** — FK to `brands.id` (NOT NULL, no orphans enforced at DB level). Brand inserts must be accompanied by a zip code row. |
 | 🔴 High | **Seed 60 supplier zip codes** from `Package-Shipping-Reference-Supplier-Zip-Codes.csv` — insert new brands first, then zip code rows. Only Keyence and Eaton already exist in `brands`; all others need to be added. |
-| 🔴 High | Add missing `brand_categories`: Bearings, Belts & Drives, Lubricants & MRO |
-| 🔴 High | Seed brands for Bearings (SKF, NSK, Timken, Dodge/Baldor) and Belts & Drives (Gates, Dayco, Browning/Rexnord) |
+| 🔴 High | Add missing `brand_categories`: Lubricants & MRO (still needed) |
 | 🔴 High | Add RLS policies for public read on brands, brand_categories, industries |
 | 🟡 Med  | Seed `equipment_types` using `branch-shelf.csv` product types as source data |
 | 🟡 Med  | Seed brands for remaining empty categories: HVAC, Conveyors, Pneumatics, Safety, Fasteners |
