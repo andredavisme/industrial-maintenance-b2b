@@ -6,32 +6,41 @@
 ## Last Updated
 2026-06-25
 
-## Project Scope (Clarified)
+## Project Scope
 **No frontend development focus.** All work limited to:
 - Documentation
 - Data seeding
 - Backend / calculation architecture support
 
-Views and schema objects should be designed to make data accessible for any future frontend, but no UI work is in scope.
-
 ## Current State
-🟢 **Phase 1 — Data Foundation complete.**
-DB: **101 brands / 13 categories / 5 industries / 5 aliases / 59 supplier zip codes / 64 equipment types / 606 brand-equipment links / 250 brand-industry links**
-Views: **v_brands_full ✅ / v_equipment_brands ✅**
-RLS: **Enabled on all 9 tables ✅**
+🟢 **Phase 1 — Data Foundation complete. Shipping architecture in progress.**
+DB: **101 brands / 13 categories / 5 industries / 5 aliases / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links**
+Views: **v_brands_full ✅ / v_equipment_brands ✅ / supplier_zip_codes (compat view) ✅**
+RLS: **Enabled on all 10 tables ✅**
+
+## Shipping Journey Model
+A shipment is a sequence of legs:
+- **Point A** — supplier origin (lives in `shipping_nodes` as `node_type = 'supplier'`)
+- **Point B** — first receiver (warehouse, distributor, etc.)
+- **Point C+** — any subsequent nodes in the chain
+
+Each leg (A→B, B→C, etc.) is an independent unit: `origin_node × destination_node → cost`.
+Cost calculation logic is **Phase 2** — no calc logic exists yet.
+AppSheet app is a **reference library only** (no calc logic).
+
+## Completed — 2026-06-25 (Session 13)
+- [x] Created `shipping_nodes` table with `node_type` (supplier/warehouse/distributor/customer), `brand_id` FK, zip/city/state, `is_primary`, `notes`
+- [x] Migrated all 59 `supplier_zip_codes` rows into `shipping_nodes` as `node_type = 'supplier'`
+- [x] Replaced `supplier_zip_codes` table with a compatibility view over `shipping_nodes`
+- [x] RLS enabled on `shipping_nodes` (public read)
+- [x] Defined shipping journey model (Point A/B/C leg architecture)
 
 ## Completed — 2026-06-25 (Session 12)
-- [x] Created `v_brands_full` view — one row per brand with category, parent brand, and aggregated `aliases[]`, `industries[]`, `equipment_types[]` arrays
-- [x] Created `v_equipment_brands` view — one row per equipment type with category, aggregated `brands[]` array (active only, sorted), and `brand_count`
-- [x] Clarified project scope: no frontend focus — documentation, seeding, backend architecture only
+- [x] Created `v_brands_full` and `v_equipment_brands` views
+- [x] Clarified project scope: no frontend focus
 
 ## Completed — 2026-06-25 (Session 11)
 - [x] Seeded `brand_industry_links` — 250 rows total
-  - All 101 brands → General Industrial / Plant Maintenance
-  - Mining & Aggregate: Caterpillar, Komatsu, John Deere, Bobcat, Metso, Kolberg, Volvo CE, Terex, Case, Hitachi, Takeuchi + bearing/power transmission/material handling brands
-  - Food & Beverage Processing: SKF, NSK, Banner Engineering, Keyence, Endress+Hauser, Swan Analytical, Emerson/Rosemount, VEGA, Graco, Donaldson, Mobil, Shell Lubricants
-  - Automotive Manufacturing: Fanuc, KUKA, Yaskawa, ABB, Siemens, Allen-Bradley, Toshiba, Lenze, Bodine, Baldor, WEG, Schneider Electric
-  - HVAC & Facilities: Air Incorporated, FW Webb, Take 5, Donaldson, Baldor, WEG, ABB, Siemens, Schneider Electric
 
 ## Completed — 2026-06-25 (Session 10)
 - [x] Seeded `brand_equipment_links` — 606 rows total
@@ -39,48 +48,34 @@ RLS: **Enabled on all 9 tables ✅**
 ## Completed — 2026-06-25 (Session 9)
 - [x] Seeded 64 `equipment_types` across all 13 categories
 
-## Completed — 2026-06-25 (Session 8)
-- [x] Updated `schema/indB2B_schema.sql`: added `supplier_zip_codes` DDL + full RLS section
-
-## Completed — 2026-06-25 (Session 7)
-- [x] Enabled RLS on all 9 tables; 8 public read policies + sessions locked to service_role
-
-## Completed — 2026-06-25 (Session 6)
-- [x] Seeded `supplier_zip_codes` (59 rows); inserted 52 new brands; `brands` at 101 total
-
-## Completed — 2026-06-25 (Sessions 3–5)
-- [x] Added Bearings, Belts & Drives, Lubricants & MRO categories + 18 brands
-- [x] Created `supplier_zip_codes` table
-
-## Completed — 2026-06-25 (Sessions 1–2)
-- [x] Repo created, schema applied, initial seed data, sessions table, branch-shelf.csv analyzed
+## Completed — 2026-06-25 (Sessions 1–8)
+- [x] Full schema, RLS, seed data, brands/categories/industries/aliases/zip codes
 
 ## Next Steps
 
 | Priority | Task |
 |----------|------|
-| 🔴 High | Decide: shipping rate/zone logic in Supabase (Edge Functions or tables) vs. AppSheet |
-| 🟡 Med  | Update `data/brands_seed.sql` to reflect 52 new brands + zip codes |
+| 🔴 High | Design `shipment_legs` table (from_node, to_node, sequence, cost fields) |
+| 🔴 High | Update `schema/indB2B_schema.sql` with `shipping_nodes` DDL + new views |
+| 🔴 High | Update `docs/SCHEMA.md` to document `shipping_nodes`, views, and shipping model |
+| 🟡 Med  | Update `data/brands_seed.sql` (52 new brands + zip codes) |
 | 🟡 Med  | Commit `Package-Shipping-Reference-Supplier-Zip-Codes.csv` to `data/` |
 | 🟡 Med  | Commit `branch-shelf.csv` to `data/` |
-| 🟡 Med  | Update `schema/indB2B_schema.sql` to include view DDL |
-| 🟡 Med  | Update `docs/SCHEMA.md` to document the two new views |
-
-## Shipping Feature Context
-A new AppSheet app ([link](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8)) records supplier origin zip codes to calculate estimated shipping costs.
 
 ## Open Questions
-- Should shipping rate/zone calculation logic live in Supabase (Edge Functions or tables) or remain in AppSheet?
+- Should `shipment_legs` be built now (schema only, no calc logic) or deferred to Phase 2?
 - Is RFQ functionality in scope for Phase 1 or Phase 2?
+
+## AppSheet Reference
+[AppSheet app](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8) — reference library for supplier zip codes only, no calculation logic.
 
 ## Key File Locations
 
 | File | Purpose |
 |------|---------|
-| `schema/indB2B_schema.sql` | Full DDL — **needs view DDL added** |
+| `schema/indB2B_schema.sql` | Full DDL — **needs shipping_nodes + view updates** |
 | `data/brands_seed.sql` | Cumulative seed data (**needs update for 52 new brands**) |
 | `data/branch-shelf.csv` | Physical warehouse shelf catalog (**not yet committed**) |
 | `data/Package-Shipping-Reference-Supplier-Zip-Codes.csv` | Supplier zip codes (**not yet committed**) |
-| `docs/SCHEMA.md` | Human-readable schema reference (**needs view documentation**) |
+| `docs/SCHEMA.md` | Human-readable schema reference (**needs shipping_nodes + views**) |
 | `docs/DATA_CATALOG.md` | Brand/category index with status |
-| `docs/DEV_GUIDE.md` | Setup instructions |
