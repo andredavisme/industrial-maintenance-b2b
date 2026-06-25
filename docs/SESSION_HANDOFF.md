@@ -6,10 +6,24 @@
 ## Last Updated
 2026-06-25
 
+## Project Scope (Clarified)
+**No frontend development focus.** All work limited to:
+- Documentation
+- Data seeding
+- Backend / calculation architecture support
+
+Views and schema objects should be designed to make data accessible for any future frontend, but no UI work is in scope.
+
 ## Current State
-🟢 **Phase 1 — Data Foundation** nearly complete.
+🟢 **Phase 1 — Data Foundation complete.**
 DB: **101 brands / 13 categories / 5 industries / 5 aliases / 59 supplier zip codes / 64 equipment types / 606 brand-equipment links / 250 brand-industry links**
+Views: **v_brands_full ✅ / v_equipment_brands ✅**
 RLS: **Enabled on all 9 tables ✅**
+
+## Completed — 2026-06-25 (Session 12)
+- [x] Created `v_brands_full` view — one row per brand with category, parent brand, and aggregated `aliases[]`, `industries[]`, `equipment_types[]` arrays
+- [x] Created `v_equipment_brands` view — one row per equipment type with category, aggregated `brands[]` array (active only, sorted), and `brand_count`
+- [x] Clarified project scope: no frontend focus — documentation, seeding, backend architecture only
 
 ## Completed — 2026-06-25 (Session 11)
 - [x] Seeded `brand_industry_links` — 250 rows total
@@ -21,15 +35,6 @@ RLS: **Enabled on all 9 tables ✅**
 
 ## Completed — 2026-06-25 (Session 10)
 - [x] Seeded `brand_equipment_links` — 606 rows total
-  - Primary: every brand linked to all equipment types in its own category
-  - Cross-category: SKF/Timken/NSK/FAG/INA/Schaeffler/NTN → Seals & O-Rings, Lubricating Oil, Grease
-  - Cross-category: ABB/Siemens/Allen-Bradley/Schneider → VFDs, Electric Motors, HMIs
-  - Cross-category: Baldor/WEG/Nidec/Regal-Beloit → VFDs
-  - Cross-category: Gates/ContiTech/Tsubaki → Conveyor Belts; Tsubaki also → Conveyor Rollers
-  - Cross-category: Fanuc/Yaskawa/KUKA → Servo Motors, PLCs, HMIs
-  - Cross-category: Graco → Hydraulic Hoses & Fittings, Lubricating Oil, Grease
-  - Cross-category: Donaldson → HVAC Filters
-  - Cross-category: Permatex/CRC → Thread Sealants, Degreasers & Cleaners
 
 ## Completed — 2026-06-25 (Session 9)
 - [x] Seeded 64 `equipment_types` across all 13 categories
@@ -54,28 +59,28 @@ RLS: **Enabled on all 9 tables ✅**
 
 | Priority | Task |
 |----------|------|
-| 🔴 High | Create views: `v_brands_full`, `v_equipment_brands` |
+| 🔴 High | Decide: shipping rate/zone logic in Supabase (Edge Functions or tables) vs. AppSheet |
 | 🟡 Med  | Update `data/brands_seed.sql` to reflect 52 new brands + zip codes |
 | 🟡 Med  | Commit `Package-Shipping-Reference-Supplier-Zip-Codes.csv` to `data/` |
 | 🟡 Med  | Commit `branch-shelf.csv` to `data/` |
-| ⬜ Low  | Scaffold web app consuming indB2B schema |
+| 🟡 Med  | Update `schema/indB2B_schema.sql` to include view DDL |
+| 🟡 Med  | Update `docs/SCHEMA.md` to document the two new views |
 
 ## Shipping Feature Context
 A new AppSheet app ([link](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8)) records supplier origin zip codes to calculate estimated shipping costs.
 
 ## Open Questions
-- Will the web app be Cloudflare Pages or GitHub Pages?
-- Is RFQ functionality in scope for Phase 1 or Phase 2?
 - Should shipping rate/zone calculation logic live in Supabase (Edge Functions or tables) or remain in AppSheet?
+- Is RFQ functionality in scope for Phase 1 or Phase 2?
 
 ## Key File Locations
 
 | File | Purpose |
 |------|---------|
-| `schema/indB2B_schema.sql` | Full DDL — in sync with live DB ✅ |
+| `schema/indB2B_schema.sql` | Full DDL — **needs view DDL added** |
 | `data/brands_seed.sql` | Cumulative seed data (**needs update for 52 new brands**) |
 | `data/branch-shelf.csv` | Physical warehouse shelf catalog (**not yet committed**) |
 | `data/Package-Shipping-Reference-Supplier-Zip-Codes.csv` | Supplier zip codes (**not yet committed**) |
-| `docs/SCHEMA.md` | Human-readable schema reference |
+| `docs/SCHEMA.md` | Human-readable schema reference (**needs view documentation**) |
 | `docs/DATA_CATALOG.md` | Brand/category index with status |
 | `docs/DEV_GUIDE.md` | Setup instructions |
