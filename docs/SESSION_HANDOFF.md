@@ -13,11 +13,12 @@
 - Backend / calculation architecture support
 
 ## Current State
-🟢 **Phase 1 — COMPLETE. Cost estimation layer complete (sessions 18–19). Ready for zip_distances population.**
+🟢 **Phase 1 — COMPLETE. Distance lookup layer complete (sessions 21). Ready for Phase 2.**
 
-**Tables (13):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, zip_distances
+**Tables (14):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, zip_distances, zip_distance_queue
 **Views (5):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary, v_shipment_legs_costed
-**RLS:** Enabled on all 13 tables ✅
+**Edge Functions (1):** get-distance (Nominatim lazy-load cache)
+**RLS:** Enabled on all 14 tables ✅
 
 ### File Status
 | File | Status |
@@ -30,7 +31,14 @@
 | `docs/DATA_CATALOG.md` | ✅ In sync |
 
 ### DB Counts
-101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 0 zip_distances (empty — to be populated via API script next session)
+101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 0 zip_distances (populates on-demand via get-distance Edge Function)
+
+## Distance Lookup Architecture
+- **Edge Function:** `get-distance` — `POST /functions/v1/get-distance` with `{ zip_from, zip_to }`
+- **Cache:** `zip_distances` table — bidirectional lookup, `source = 'nominatim'` for auto-resolved
+- **Fallback:** `zip_distance_queue` — `status = 'pending'` rows need manual agent review
+- **Algorithm:** Nominatim geocode → haversine × 1.3 road factor
+- **No API key required**
 
 ## Shipping Journey Model
 - **Point A** — supplier origin (`shipping_nodes` where `node_type = 'supplier'`)
@@ -40,27 +48,29 @@
 - Cost inputs: `weight_lbs`, `est_miles`, `est_cost_per_mile`
 - `est_freight_cost` = GENERATED STORED (`weight_lbs * est_miles * est_cost_per_mile`)
 - `est_freight_cost_override` = manual override; takes precedence in all rollups
-- `zip_distances` table = bidirectional zip pair distance lookup
-- `v_shipment_legs_costed` = full costed view: auto-fills distance from zip_distances when est_miles not set
-- Actual/invoiced costs deferred to financial tables (Phase 2+)
+- `zip_distances` = lazy-load cache, auto-populated by get-distance function
+- `v_shipment_legs_costed` = full costed view with auto distance lookup
+
+## Completed — 2026-06-25 (Session 21)
+- [x] Created `zip_distance_queue` table (pending/resolved/failed, RLS, trigger)
+- [x] Deployed `get-distance` Edge Function v1 (Nominatim geocode, haversine × 1.3, lazy-load cache, queue fallback)
+- [x] Updated `zip_distances` source CHECK to include `nominatim`
+- [x] Synced `schema/indB2B_schema.sql`, `docs/SCHEMA.md`, `docs/SESSION_HANDOFF.md`
 
 ## Completed — 2026-06-25 (Session 20 — closeout)
 - [x] Updated SESSION_HANDOFF.md with confirmed next step: API script to populate zip_distances
-- [x] Resolved open question: zip_distances to be populated via API script (not manual or CSV)
 
 ## Completed — 2026-06-25 (Session 19)
 - [x] Created `zip_distances` table (zip_from, zip_to PK, miles, source, RLS, trigger)
-- [x] Created `v_shipment_legs_costed` view (bidirectional zip lookup, effective_miles, effective_freight_cost priority chain)
-- [x] Synced `schema/indB2B_schema.sql`, `docs/SCHEMA.md`, `docs/SESSION_HANDOFF.md`
-
-## Completed — 2026-06-25 (Session 18)
-- [x] Added cost fields to `shipment_legs`: `weight_lbs`, `est_miles`, `est_cost_per_mile`, `est_freight_cost` (GENERATED STORED), `est_freight_cost_override`
-- [x] Created `v_shipment_cost_summary` view
+- [x] Created `v_shipment_legs_costed` view
 - [x] Synced schema and docs
 
+## Completed — 2026-06-25 (Session 18)
+- [x] Added cost fields to `shipment_legs`
+- [x] Created `v_shipment_cost_summary` view
+
 ## Completed — 2026-06-25 (Sessions 15–17)
-- [x] Seeded carriers (14 rows), updated brands_seed.sql, DATA_CATALOG.md
-- [x] Committed branch-shelf.csv and Package-Shipping-Reference-Supplier-Zip-Codes-2.csv
+- [x] Seeded carriers (14 rows), committed CSV data files
 
 ## Completed — 2026-06-25 (Sessions 1–14)
 - [x] Full schema, all seed data, brand/category/industry/equipment/links, views, RLS, shipping architecture
@@ -69,14 +79,13 @@
 
 | Priority | Task |
 |----------|------|
-| 🔜 High | Write API script to populate `zip_distances` from 59 supplier zips → known destination zips |
+| ⬜ Medium | Monitor `zip_distance_queue` for failed geocodes; resolve manually |
 | ⬜ Low | RFQ functionality (scope TBD) |
 | ⬜ Low | Financial tables for actual/invoiced costs per order |
 
 ## Open Questions
 - Is RFQ functionality in scope for Phase 2?
-- Which distance API to use for zip_distances population? (Google Maps, Zipcodebase, etc.)
-- What are the known destination zip codes (warehouses/distributors) to pair against the 59 supplier zips?
+- What are the known destination zip codes (warehouses/distributors)?
 
 ## AppSheet Reference
 [AppSheet app](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8) — reference library for supplier zip codes only.
