@@ -2,6 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
+-- Last synced: 2026-06-25 (sessions 1–14)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -107,32 +108,6 @@ CREATE TABLE IF NOT EXISTS "indB2B".brand_equipment_links (
   PRIMARY KEY (brand_id, equipment_type_id)
 );
 
--- ---- supplier_zip_codes -----------------------------------------
-CREATE TABLE IF NOT EXISTS "indB2B".supplier_zip_codes (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  brand_id   uuid NOT NULL REFERENCES "indB2B".brands(id) ON DELETE RESTRICT,
-  zip_code   varchar(10) NOT NULL,
-  city       varchar(100),
-  state_code char(2),
-  notes      text,
-  is_primary boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_supplier_zip_brand_primary
-  ON "indB2B".supplier_zip_codes (brand_id) WHERE is_primary = true;
-
-CREATE INDEX IF NOT EXISTS idx_supplier_zip_codes_brand_id
-  ON "indB2B".supplier_zip_codes (brand_id);
-
-CREATE INDEX IF NOT EXISTS idx_supplier_zip_codes_zip
-  ON "indB2B".supplier_zip_codes (zip_code);
-
-CREATE TRIGGER set_updated_at_supplier_zip_codes
-  BEFORE UPDATE ON "indB2B".supplier_zip_codes
-  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
-
 -- ---- sessions (agent audit log) ---------------------------------
 CREATE TABLE IF NOT EXISTS "indB2B".sessions (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -152,53 +127,173 @@ CREATE TRIGGER trg_sessions_updated_at
 CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON "indB2B".sessions(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON "indB2B".sessions(status);
 
+-- ---- shipping_nodes ---------------------------------------------
+-- Generalized shipping location node (suppliers, warehouses, distributors, customers).
+-- supplier_zip_codes is a compatibility view over this table.
+CREATE TABLE IF NOT EXISTS "indB2B".shipping_nodes (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_type    text NOT NULL CHECK (node_type IN ('supplier','warehouse','distributor','customer')),
+  brand_id     uuid REFERENCES "indB2B".brands(id) ON DELETE SET NULL,
+  name         text NOT NULL,
+  zip_code     varchar(10) NOT NULL,
+  city         varchar(100),
+  state_code   char(2),
+  is_primary   boolean NOT NULL DEFAULT false,
+  notes        text,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shipping_nodes_node_type ON "indB2B".shipping_nodes(node_type);
+CREATE INDEX IF NOT EXISTS idx_shipping_nodes_brand_id  ON "indB2B".shipping_nodes(brand_id);
+CREATE INDEX IF NOT EXISTS idx_shipping_nodes_zip_code  ON "indB2B".shipping_nodes(zip_code);
+
+CREATE TRIGGER set_updated_at_shipping_nodes
+  BEFORE UPDATE ON "indB2B".shipping_nodes
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+-- ---- carriers ---------------------------------------------------
+CREATE TABLE IF NOT EXISTS "indB2B".carriers (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       text NOT NULL,
+  scac_code  varchar(4),
+  website    text,
+  is_active  boolean NOT NULL DEFAULT true,
+  notes      text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_carriers_scac ON "indB2B".carriers(scac_code) WHERE scac_code IS NOT NULL;
+
+CREATE TRIGGER set_updated_at_carriers
+  BEFORE UPDATE ON "indB2B".carriers
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+-- ---- shipments --------------------------------------------------
+CREATE TABLE IF NOT EXISTS "indB2B".shipments (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  reference_number    text NOT NULL UNIQUE,
+  origin_node_id      uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
+  destination_node_id uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
+  status              text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','active','completed','cancelled')),
+  notes               text,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  updated_at          timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shipments_origin      ON "indB2B".shipments(origin_node_id);
+CREATE INDEX IF NOT EXISTS idx_shipments_destination ON "indB2B".shipments(destination_node_id);
+CREATE INDEX IF NOT EXISTS idx_shipments_status      ON "indB2B".shipments(status);
+
+CREATE TRIGGER set_updated_at_shipments
+  BEFORE UPDATE ON "indB2B".shipments
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+-- ---- shipment_legs ----------------------------------------------
+CREATE TABLE IF NOT EXISTS "indB2B".shipment_legs (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shipment_id     uuid NOT NULL REFERENCES "indB2B".shipments(id) ON DELETE CASCADE,
+  sequence        integer NOT NULL,
+  from_node_id    uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
+  to_node_id      uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
+  status          text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','in_transit','delivered','cancelled')),
+  carrier_id      uuid REFERENCES "indB2B".carriers(id) ON DELETE RESTRICT,
+  tracking_number text,
+  shipped_at      timestamptz,
+  received_at     timestamptz,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT uq_shipment_leg_sequence UNIQUE (shipment_id, sequence)
+);
+
+CREATE INDEX IF NOT EXISTS idx_shipment_legs_shipment  ON "indB2B".shipment_legs(shipment_id);
+CREATE INDEX IF NOT EXISTS idx_shipment_legs_from_node ON "indB2B".shipment_legs(from_node_id);
+CREATE INDEX IF NOT EXISTS idx_shipment_legs_to_node   ON "indB2B".shipment_legs(to_node_id);
+CREATE INDEX IF NOT EXISTS idx_shipment_legs_carrier   ON "indB2B".shipment_legs(carrier_id);
+CREATE INDEX IF NOT EXISTS idx_shipment_legs_status    ON "indB2B".shipment_legs(status);
+
+CREATE TRIGGER set_updated_at_shipment_legs
+  BEFORE UPDATE ON "indB2B".shipment_legs
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+-- ============================================================
+-- VIEWS
+-- ============================================================
+
+-- supplier_zip_codes: compatibility view over shipping_nodes
+CREATE OR REPLACE VIEW "indB2B".supplier_zip_codes AS
+SELECT id, brand_id, zip_code, city, state_code, is_primary, notes, created_at, updated_at
+FROM "indB2B".shipping_nodes
+WHERE node_type = 'supplier';
+
+-- v_brands_full: one row per brand with category, parent brand, and aggregated arrays
+CREATE OR REPLACE VIEW "indB2B".v_brands_full AS
+SELECT
+  b.id, b.name, b.slug, b.website, b.notes, b.is_active,
+  bc.name                        AS category,
+  bc.slug                        AS category_slug,
+  pb.name                        AS parent_brand,
+  ARRAY_AGG(DISTINCT ba.alias)   FILTER (WHERE ba.alias IS NOT NULL)  AS aliases,
+  ARRAY_AGG(DISTINCT i.name)     FILTER (WHERE i.name IS NOT NULL)    AS industries,
+  ARRAY_AGG(DISTINCT et.name)    FILTER (WHERE et.name IS NOT NULL)   AS equipment_types,
+  b.created_at, b.updated_at
+FROM "indB2B".brands b
+LEFT JOIN "indB2B".brand_categories       bc  ON bc.id  = b.category_id
+LEFT JOIN "indB2B".brands                 pb  ON pb.id  = b.parent_brand_id
+LEFT JOIN "indB2B".brand_aliases          ba  ON ba.brand_id = b.id
+LEFT JOIN "indB2B".brand_industry_links   bil ON bil.brand_id = b.id
+LEFT JOIN "indB2B".industries             i   ON i.id  = bil.industry_id
+LEFT JOIN "indB2B".brand_equipment_links  bel ON bel.brand_id = b.id
+LEFT JOIN "indB2B".equipment_types        et  ON et.id = bel.equipment_type_id
+GROUP BY b.id, b.name, b.slug, b.website, b.notes, b.is_active,
+         bc.name, bc.slug, pb.name, b.created_at, b.updated_at;
+
+-- v_equipment_brands: one row per equipment type with aggregated brand list
+CREATE OR REPLACE VIEW "indB2B".v_equipment_brands AS
+SELECT
+  et.id, et.name AS equipment_type, et.slug AS equipment_slug,
+  et.description, et.is_active,
+  bc.name        AS category,
+  bc.slug        AS category_slug,
+  ARRAY_AGG(DISTINCT b.name ORDER BY b.name) FILTER (WHERE b.name IS NOT NULL) AS brands,
+  COUNT(DISTINCT b.id) AS brand_count
+FROM "indB2B".equipment_types et
+LEFT JOIN "indB2B".brand_categories      bc  ON bc.id = et.category_id
+LEFT JOIN "indB2B".brand_equipment_links bel ON bel.equipment_type_id = et.id
+LEFT JOIN "indB2B".brands               b   ON b.id = bel.brand_id AND b.is_active = true
+GROUP BY et.id, et.name, et.slug, et.description, et.is_active, bc.name, bc.slug;
+
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
 
--- Enable RLS on all tables
-ALTER TABLE "indB2B".brand_categories       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".industries             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".brands                 ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".brand_aliases          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".equipment_types        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".brand_industry_links   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".brand_equipment_links  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".supplier_zip_codes     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "indB2B".sessions               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".brand_categories      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".industries            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".brands                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".brand_aliases         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".equipment_types       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".brand_industry_links  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".brand_equipment_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".sessions              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".shipping_nodes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".carriers              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".shipments             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".shipment_legs         ENABLE ROW LEVEL SECURITY;
 
--- Public read: active records only
-CREATE POLICY "public_read_brand_categories"
-  ON "indB2B".brand_categories FOR SELECT
-  TO anon, authenticated USING (is_active = true);
+-- Active-only public read
+CREATE POLICY "public_read_brand_categories"  ON "indB2B".brand_categories  FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "public_read_brands"            ON "indB2B".brands            FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "public_read_industries"        ON "indB2B".industries        FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "public_read_equipment_types"   ON "indB2B".equipment_types   FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "public_read_carriers"          ON "indB2B".carriers          FOR SELECT TO anon, authenticated USING (is_active = true);
 
-CREATE POLICY "public_read_brands"
-  ON "indB2B".brands FOR SELECT
-  TO anon, authenticated USING (is_active = true);
+-- All-rows public read
+CREATE POLICY "public_read_brand_aliases"          ON "indB2B".brand_aliases          FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public_read_brand_equipment_links"  ON "indB2B".brand_equipment_links  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public_read_brand_industry_links"   ON "indB2B".brand_industry_links   FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public read shipping_nodes"         ON "indB2B".shipping_nodes         FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public read shipments"              ON "indB2B".shipments              FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public read shipment_legs"          ON "indB2B".shipment_legs          FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "public_read_industries"
-  ON "indB2B".industries FOR SELECT
-  TO anon, authenticated USING (is_active = true);
-
-CREATE POLICY "public_read_equipment_types"
-  ON "indB2B".equipment_types FOR SELECT
-  TO anon, authenticated USING (is_active = true);
-
--- Public read: all rows
-CREATE POLICY "public_read_brand_aliases"
-  ON "indB2B".brand_aliases FOR SELECT
-  TO anon, authenticated USING (true);
-
-CREATE POLICY "public_read_brand_equipment_links"
-  ON "indB2B".brand_equipment_links FOR SELECT
-  TO anon, authenticated USING (true);
-
-CREATE POLICY "public_read_brand_industry_links"
-  ON "indB2B".brand_industry_links FOR SELECT
-  TO anon, authenticated USING (true);
-
-CREATE POLICY "public_read_supplier_zip_codes"
-  ON "indB2B".supplier_zip_codes FOR SELECT
-  TO anon, authenticated USING (true);
-
--- sessions: NO public policy — service_role only (bypasses RLS by default)
+-- sessions: NO public policy — service_role only
