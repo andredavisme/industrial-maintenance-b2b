@@ -8,12 +8,17 @@
 
 ## Current State
 🟡 **Phase 1 — Data Foundation** in progress.
+DB: **49 brands / 13 categories / 5 industries / 5 aliases**
+
+## Completed — 2026-06-25 (Session 4)
+- [x] Added `Lubricants & MRO` to `brand_categories` (`c2e15a09`)
+- [x] Seeded 6 Lubricants & MRO brands: Mobil, Shell Lubricants, WD-40, Zerk (Generic), Permatex, CRC Industries
+- [x] `brands` now at **49 total**, `brand_categories` at **13 total**
 
 ## Completed — 2026-06-25 (Session 3)
 - [x] Added 2 missing `brand_categories`: **Bearings** (`aff4f4c2`) and **Belts & Drives** (`d1edbdd1`)
 - [x] Seeded 6 Bearings brands: SKF, NSK, Timken, FAG, NTN, INA
 - [x] Seeded 6 Belts & Drives brands: Gates, Dayco, Browning, Dodge, Fenner, ContiTech
-- [x] `brands` table now at **43 total**, `brand_categories` at **12 total**
 
 ## Completed — 2026-06-25 (Session 2)
 - [x] Reviewed live DB state: 10 categories, 31 brands, 5 industries, 5 aliases confirmed
@@ -23,7 +28,6 @@
   - Top categories by shelf count: Bearings (27), Fasteners & Hardware (13), Belts & Drives (11)
   - Top product types: Pillow Block Bearings (10 shelves), Roller Bearings (9 shelves)
 - [x] Generated shelf-frequency analysis and category volume charts
-- [x] Identified critical schema gap: **Bearings** and **Belts & Drives** are not in `brand_categories` but are the #1 and #3 highest-volume categories in the warehouse
 - [x] Identified **Lubricants & MRO** as a new category needed (Grease, Lubricant, Grease Zerks)
 
 ## Completed — 2026-06-25 (Session 1)
@@ -38,10 +42,9 @@
 
 | Priority | Task |
 |----------|------|
-| 🔴 High | **Create `supplier_zip_codes` table** — FK to `brands.id` (NOT NULL, no orphans enforced at DB level). Brand inserts must be accompanied by a zip code row. |
-| 🔴 High | **Seed 60 supplier zip codes** from `Package-Shipping-Reference-Supplier-Zip-Codes.csv` — insert new brands first, then zip code rows. Only Keyence and Eaton already exist in `brands`; all others need to be added. |
-| 🔴 High | Add missing `brand_categories`: Lubricants & MRO (still needed) |
-| 🔴 High | Add RLS policies for public read on brands, brand_categories, industries |
+| 🔴 High | **Create `supplier_zip_codes` table** — FK to `brands.id` (NOT NULL). Brand inserts must be accompanied by a zip code row. |
+| 🔴 High | **Seed 60 supplier zip codes** from `Package-Shipping-Reference-Supplier-Zip-Codes.csv` — insert new brands first, then zip code rows. Only Keyence and Eaton already exist in `brands`. |
+| 🔴 High | Add RLS policies for public read on `brands`, `brand_categories`, `industries` |
 | 🟡 Med  | Seed `equipment_types` using `branch-shelf.csv` product types as source data |
 | 🟡 Med  | Seed brands for remaining empty categories: HVAC, Conveyors, Pneumatics, Safety, Fasteners |
 | 🟡 Med  | Seed `brand_industry_links` and `brand_equipment_links` (M:M — currently empty) |
