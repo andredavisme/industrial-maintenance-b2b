@@ -13,7 +13,7 @@
 - Backend / calculation architecture support
 
 ## Current State
-🟢 **Phase 1 — COMPLETE. Cost estimation layer complete (sessions 18–19).**
+🟢 **Phase 1 — COMPLETE. Cost estimation layer complete (sessions 18–19). Ready for zip_distances population.**
 
 **Tables (13):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, zip_distances
 **Views (5):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary, v_shipment_legs_costed
@@ -30,7 +30,7 @@
 | `docs/DATA_CATALOG.md` | ✅ In sync |
 
 ### DB Counts
-101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 0 zip_distances (empty — needs population)
+101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 0 zip_distances (empty — to be populated via API script next session)
 
 ## Shipping Journey Model
 - **Point A** — supplier origin (`shipping_nodes` where `node_type = 'supplier'`)
@@ -43,6 +43,10 @@
 - `zip_distances` table = bidirectional zip pair distance lookup
 - `v_shipment_legs_costed` = full costed view: auto-fills distance from zip_distances when est_miles not set
 - Actual/invoiced costs deferred to financial tables (Phase 2+)
+
+## Completed — 2026-06-25 (Session 20 — closeout)
+- [x] Updated SESSION_HANDOFF.md with confirmed next step: API script to populate zip_distances
+- [x] Resolved open question: zip_distances to be populated via API script (not manual or CSV)
 
 ## Completed — 2026-06-25 (Session 19)
 - [x] Created `zip_distances` table (zip_from, zip_to PK, miles, source, RLS, trigger)
@@ -65,13 +69,14 @@
 
 | Priority | Task |
 |----------|------|
-| ⬜ High | Populate `zip_distances` with actual supplier→destination pairs |
+| 🔜 High | Write API script to populate `zip_distances` from 59 supplier zips → known destination zips |
 | ⬜ Low | RFQ functionality (scope TBD) |
 | ⬜ Low | Financial tables for actual/invoiced costs per order |
 
 ## Open Questions
 - Is RFQ functionality in scope for Phase 2?
-- How should `zip_distances` be populated — manual entry, bulk CSV import, or API script?
+- Which distance API to use for zip_distances population? (Google Maps, Zipcodebase, etc.)
+- What are the known destination zip codes (warehouses/distributors) to pair against the 59 supplier zips?
 
 ## AppSheet Reference
 [AppSheet app](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8) — reference library for supplier zip codes only.
