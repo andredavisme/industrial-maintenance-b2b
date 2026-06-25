@@ -13,7 +13,7 @@
 - Backend / calculation architecture support
 
 ## Current State
-🟢 **Phase 1 — COMPLETE. User/supply-chain schema added (session 22). Ready for user directory seeding or auth wiring.**
+🟢 **Phase 1 — COMPLETE. User directory + supply chain seeding complete (session 23). Ready for v_supply_chain_graph view or auth wiring.**
 
 **Tables (19):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, supply_chain_links, user_brand_links, user_equipment_links, user_industry_links, users, zip_distances, zip_distance_queue
 **Views (5):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary, v_shipment_legs_costed
@@ -23,15 +23,15 @@
 ### File Status
 | File | Status |
 |------|--------|
-| `schema/indB2B_schema.sql` | ⚠️ Needs sync (session 22 DDL not yet written) |
+| `schema/indB2B_schema.sql` | ✅ Synced (session 22 DDL committed) |
 | `data/brands_seed.sql` | ✅ 101 brands / 13 categories / 5 industries / 5 aliases / 59 zip codes / 14 carriers |
 | `data/branch-shelf.csv` | ✅ Committed |
 | `data/Package-Shipping-Reference-Supplier-Zip-Codes-2.csv` | ✅ Committed |
-| `docs/SCHEMA.md` | ⚠️ Needs sync (5 new tables) |
+| `docs/SCHEMA.md` | ✅ Synced (5 new tables documented) |
 | `docs/DATA_CATALOG.md` | ✅ In sync |
 
 ### DB Counts
-101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 0 zip_distances (populates on-demand via get-distance Edge Function) / 0 users / 0 supply_chain_links
+101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / **101 users (78 vendor, 23 distributor)** / **101 user_brand_links** / **250 user_industry_links** / **606 user_equipment_links** / **47 supply_chain_links** / 0 zip_distances (populates on-demand via get-distance Edge Function)
 
 ## User / Supply Chain Architecture (Session 22)
 
@@ -75,13 +75,18 @@ ALTER TABLE "indB2B".users
 - `est_freight_cost_override` = manual override; takes precedence in all rollups
 - `v_shipment_legs_costed` = full costed view with auto distance lookup
 
+## Completed — 2026-06-25 (Session 23)
+- [x] Seeded `users` table: 101 rows (78 vendor, 23 distributor) from brands data via slug match
+- [x] Auto-populated `user_brand_links` (101 rows) by slug match, role = authorized_dealer or distributor
+- [x] Auto-populated `user_industry_links` (250 rows) mirroring `brand_industry_links`
+- [x] Auto-populated `user_equipment_links` (606 rows) mirroring `brand_equipment_links`
+- [x] Seeded `supply_chain_links` (47 rows): known vendor→distributor relationships across Bearings, Belts & Drives, Motors & Drives, PLCs & Control Systems, Pneumatics & Hydraulics, Lubricants & MRO categories
+
 ## Completed — 2026-06-25 (Session 22)
 - [x] Designed user/supply-chain relationship model (end_user, distributor, vendor)
-- [x] Applied migration `add_users_and_supply_chain_tables`:
-  - `users`, `user_brand_links`, `user_industry_links`, `user_equipment_links`, `supply_chain_links`
-  - `updated_at` triggers on `users` and `supply_chain_links`
-  - RLS with public read policies on all 5 new tables
+- [x] Applied migration `add_users_and_supply_chain_tables`
 - [x] `auth_user_id` column pre-placed (nullable) for non-breaking Phase 2 auth wiring
+- [x] Synced `schema/indB2B_schema.sql` and `docs/SCHEMA.md` with 5 new tables
 
 ## Completed — 2026-06-25 (Session 21)
 - [x] Created `zip_distance_queue` table
@@ -95,17 +100,13 @@ ALTER TABLE "indB2B".users
 
 | Priority | Task |
 |----------|------|
-| ⬜ High | Sync `schema/indB2B_schema.sql` and `docs/SCHEMA.md` with 5 new tables from session 22 |
-| ⬜ High | Seed initial `users` rows (vendors + distributors from existing brands data) |
-| ⬜ High | Seed `supply_chain_links` to map known vendor → distributor relationships |
-| ⬜ Medium | Create `v_supply_chain_graph` view for end-user-facing network traversal |
+| ⬜ High | Create `v_supply_chain_graph` view for end-user-facing network traversal |
 | ⬜ Medium | Add `user_id` FK to `shipping_nodes` and `supplier_zip_codes` |
 | ⬜ Medium | Monitor `zip_distance_queue` for failed geocodes; resolve manually |
 | ⬜ Low | Phase 2 auth wiring: add FK constraint `auth_user_id → auth.users(id)` + RLS write policies |
 | ⬜ Low | RFQ functionality (scope TBD) |
 
 ## Open Questions
-- Which existing brands should be seeded as `vendor` vs `distributor` users?
 - Is RFQ functionality in scope for Phase 2?
 - What are the known destination zip codes (warehouses/distributors)?
 
@@ -116,9 +117,9 @@ ALTER TABLE "indB2B".users
 
 | File | Purpose |
 |------|---------|
-| `schema/indB2B_schema.sql` | Full DDL — ⚠️ needs sync |
+| `schema/indB2B_schema.sql` | Full DDL — ✅ synced |
 | `data/brands_seed.sql` | Cumulative seed data — ✅ complete |
 | `data/branch-shelf.csv` | Physical warehouse shelf catalog — ✅ committed |
 | `data/Package-Shipping-Reference-Supplier-Zip-Codes-2.csv` | Supplier zip codes source reference — ✅ committed |
-| `docs/SCHEMA.md` | Human-readable schema reference — ⚠️ needs sync |
+| `docs/SCHEMA.md` | Human-readable schema reference — ✅ synced |
 | `docs/DATA_CATALOG.md` | Brand/category index with status — ✅ in sync |
