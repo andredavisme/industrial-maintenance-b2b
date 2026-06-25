@@ -1,0 +1,126 @@
+shelf_id,product_type
+H10,Flanged Bearings
+H20,Flanged Bearings
+H30,Flanged Bearings
+H40,Flanged Bearings
+H50,Variable Pitch Sheaves
+H60,Variable Pitch Sheaves
+H70,Variable Pitch Sheaves
+H80,Unused
+H90,Double Groove Sheaves
+H100,Double Groove Sheaves
+H110,Hubs
+H110,Flange Coupling Elements
+H120,Coupling Sleeves
+I20,Couplings
+I20,Coupling Spiders
+I30,Coupling Chains
+I30,Catalogs
+I40,Split Taper Bushings
+I40,Bushing Bolts
+I50,Split Taper Bushings
+I60,Bushings
+I70,Bushings
+I80,Bushings
+I80,Catalogs
+I90,Lock Collars
+I100,Set Screws
+I110,Flanged Bearings
+I110,Keyless Bushings
+I120,Pillow Block Bearings
+I130,Keystock
+Wall2,3L Belts
+Wall2,4L Belts
+Wall2,A Belts
+Wall2,AX Belts
+Wall1,4L Belts
+Wall1,3VX Belts
+Wall1,5VX Belts
+Wall1,5L Belts
+Wall1,B Belts
+Wall1,BX Belts
+Wall1,Pick and Hold Belts
+Rack1,Grease
+Rack1,Chain
+Rack1,Discard Products - Not Stock
+Rack1,Facility Storage
+Rack2,Motors
+Rack2,Steel Shaft
+Rack2,Idler Pulleys
+Rack2,Facility Storage
+Rack2,Overstock Belts
+Rack3,Motors
+Rack3,Pumps
+Rack3,Timing Belts
+Rack3,8V Belts
+Rack3,C Belts
+Rack3,D Belts
+Rack3,Wing Pulley Idler
+Rack4,Overstock Belts
+Rack4,Facility Storage
+Rack4,RB Belts
+CH1,Chain
+CH1,Chain Links
+CH1,Sprockets
+G10,Sleeves
+G20,Pillow Block Bearings
+G30,Pillow Block Bearings
+G40,Pillow Block Bearings
+G50,Pillow Block Bearings
+G60,Pillow Block Bearings
+G70,Take Up Bearings
+G80,Bearing Inserts
+G80,Pillow Block Bearings
+G80,Hanger Bearings
+G90,Pillow Block Bearings
+A10,Plate Fasteners
+A10,Power Wrenches
+A10,Belt Tape
+A20,Pressure Gauges
+A20,Grease Zerks
+A20,Lubricant
+A20,Grease Tubing
+A30,Lubricant
+A30,Nipples
+A30,Tubing Connectors
+A30,Tubing
+A40,Compact Drives
+A40,Washers
+A50,Kitchen Storage - Unused
+B10,Unused
+B20,Tapered Roller Bearings
+B30,Tapered Roller Bearings
+B40,PLC Components
+B50,Unused
+C10,Unused
+C20,Unused
+C30,Contacts
+C30,VFDs
+C40,PLC Demos
+C50,Unused
+D10,Precision Bearings
+D20,Roller Bearings
+D30,Roller Bearings
+D40,Roller Bearings
+D50,Roller Bearings
+E10,Bearing Inserts
+E10,Pillow Block Bearings
+E20,Flange Bearings
+E20,Pillow Block Bearings
+E20,Roller Bearings
+E30,Roller Bearings
+E40,Roller Bearings
+E50,Roller Bearings
+E50,Bearing Housing
+E50,Spherical Plain Bearings
+E60,Cam Followers
+E60,Spherical Plain Bearings
+E60,Roller Bearings
+E60,Linear Shaft
+F10,Seals
+F20,Seals
+F30,Seals
+F30,Sleeves
+F40,Seals
+F50,O-Rings
+F60,Unused
