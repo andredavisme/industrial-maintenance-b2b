@@ -106,3 +106,22 @@ CREATE TABLE IF NOT EXISTS "indB2B".brand_equipment_links (
   equipment_type_id uuid NOT NULL REFERENCES "indB2B".equipment_types(id) ON DELETE CASCADE,
   PRIMARY KEY (brand_id, equipment_type_id)
 );
+
+-- ---- sessions (agent audit log) ---------------------------------
+CREATE TABLE IF NOT EXISTS "indB2B".sessions (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  started_at timestamptz NOT NULL DEFAULT now(),
+  closed_at  timestamptz,
+  agent      text,
+  summary    text,
+  status     text CHECK (status IN ('completed', 'attempted', 'abandoned')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_sessions_updated_at
+  BEFORE UPDATE ON "indB2B".sessions
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON "indB2B".sessions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON "indB2B".sessions(status);

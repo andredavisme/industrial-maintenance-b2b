@@ -1,36 +1,35 @@
 # Session Handoff
 
 > **Always update this file at the end of every work session.**
+> The `indB2B`.sessions table is the DB-side audit log — insert a row there too.
 
 ## Last Updated
 2026-06-25
 
 ## Current State
-🟡 **Phase 1 — Foundation** in progress.
+🟡 **Phase 1 — Data Foundation** in progress.
 
 ## Completed This Session
 - [x] Created repo `andredavisme/industrial-maintenance-b2b`
 - [x] Defined project structure and all foundation documents
-- [x] Drafted `indB2B` schema (tables, relationships, design principles)
-- [x] Seeded initial brand list from r/IndustrialMaintenance community thread
-- [x] Wrote `indB2B_schema.sql` DDL scaffold
-- [x] Wrote `brands_seed.sql` with initial categories and brands
+- [x] Drafted and applied `indB2B` schema to Supabase (project: nmemmfblpzrkwyljpmvp)
+- [x] Seeded brand categories (10), industries (5), brands (27), aliases (5)
+- [x] Added `indB2B`.sessions table for agent audit logging
+- [x] Updated Space instructions to use live session-init/closeout pattern
 
 ## Next Steps
 
 | Priority | Task |
 |----------|------|
-| 🔴 High | Apply `indB2B_schema.sql` to a Supabase project and verify |
+| 🔴 High | Add RLS policies for public read on brands, brand_categories, industries |
 | 🔴 High | Expand brand list — more Reddit threads + industry sources |
-| 🟡 Med | Define equipment_types seed data |
-| 🟡 Med | Create `v_brands_full` and `v_equipment_brands` views |
-| 🟡 Med | Add RLS policies for Supabase deployment |
-| ⬜ Low | Scaffold a web app consuming the indB2B schema |
-| ⬜ Low | Design local-serve app architecture |
+| 🟡 Med  | Seed equipment_types (VFDs, robot arms, conveyors, etc.) |
+| 🟡 Med  | Create views: v_brands_full, v_equipment_brands |
+| 🟡 Med  | Add SCHEMA.md entry for sessions table |
+| ⬜ Low  | Scaffold web app consuming indB2B schema |
+| ⬜ Low  | Design local-serve app architecture |
 
 ## Open Questions
-
-- Which Supabase project will host `indB2B`? (new project or existing?)
 - Will the web app be Cloudflare Pages or GitHub Pages?
 - Is RFQ functionality in scope for Phase 1 or Phase 2?
 
@@ -38,7 +37,8 @@
 
 | File | Purpose |
 |------|---------|
-| `schema/indB2B_schema.sql` | Full DDL — run this to init DB |
-| `data/brands_seed.sql` | Initial seed data |
-| `docs/DATA_CATALOG.md` | Human-readable brand/category index |
-| `docs/SCHEMA.md` | Schema design reference |
+| `schema/indB2B_schema.sql` | Full DDL — run to init DB |
+| `data/brands_seed.sql` | Cumulative seed data |
+| `docs/SCHEMA.md` | Human-readable schema reference |
+| `docs/DATA_CATALOG.md` | Brand/category index with status |
+| `docs/DEV_GUIDE.md` | Setup instructions |
