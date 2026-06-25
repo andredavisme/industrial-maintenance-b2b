@@ -2,7 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
--- Last synced: 2026-06-25 (sessions 1–18)
+-- Last synced: 2026-06-25 (sessions 1–19)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -128,8 +128,6 @@ CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON "indB2B".sessions(started_
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON "indB2B".sessions(status);
 
 -- ---- shipping_nodes ---------------------------------------------
--- Generalized shipping location node (suppliers, warehouses, distributors, customers).
--- supplier_zip_codes is a compatibility view over this table.
 CREATE TABLE IF NOT EXISTS "indB2B".shipping_nodes (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   node_type    text NOT NULL CHECK (node_type IN ('supplier','warehouse','distributor','customer')),
@@ -229,6 +227,27 @@ CREATE TRIGGER set_updated_at_shipment_legs
   BEFORE UPDATE ON "indB2B".shipment_legs
   FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
 
+-- ---- zip_distances ----------------------------------------------
+-- Pre-populated zip code pair distance table for est_miles lookup.
+-- Bidirectional: query (zip_from, zip_to) OR (zip_to, zip_from).
+CREATE TABLE IF NOT EXISTS "indB2B".zip_distances (
+  zip_from   varchar(5)    NOT NULL,
+  zip_to     varchar(5)    NOT NULL,
+  miles      numeric(10,5) NOT NULL CHECK (miles > 0),
+  source     text          NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','api','estimate')),
+  notes      text,
+  created_at timestamptz   NOT NULL DEFAULT now(),
+  updated_at timestamptz   NOT NULL DEFAULT now(),
+  PRIMARY KEY (zip_from, zip_to)
+);
+
+CREATE INDEX IF NOT EXISTS idx_zip_distances_zip_from ON "indB2B".zip_distances(zip_from);
+CREATE INDEX IF NOT EXISTS idx_zip_distances_zip_to   ON "indB2B".zip_distances(zip_to);
+
+CREATE TRIGGER set_updated_at_zip_distances
+  BEFORE UPDATE ON "indB2B".zip_distances
+  FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
+
 -- ============================================================
 -- VIEWS
 -- ============================================================
@@ -239,7 +258,7 @@ SELECT id, brand_id, zip_code, city, state_code, is_primary, notes, created_at, 
 FROM "indB2B".shipping_nodes
 WHERE node_type = 'supplier';
 
--- v_brands_full: one row per brand with category, parent brand, and aggregated arrays
+-- v_brands_full
 CREATE OR REPLACE VIEW "indB2B".v_brands_full AS
 SELECT
   b.id, b.name, b.slug, b.website, b.notes, b.is_active,
@@ -261,7 +280,7 @@ LEFT JOIN "indB2B".equipment_types        et  ON et.id = bel.equipment_type_id
 GROUP BY b.id, b.name, b.slug, b.website, b.notes, b.is_active,
          bc.name, bc.slug, pb.name, b.created_at, b.updated_at;
 
--- v_equipment_brands: one row per equipment type with aggregated brand list
+-- v_equipment_brands
 CREATE OR REPLACE VIEW "indB2B".v_equipment_brands AS
 SELECT
   et.id, et.name AS equipment_type, et.slug AS equipment_slug,
@@ -276,8 +295,7 @@ LEFT JOIN "indB2B".brand_equipment_links bel ON bel.equipment_type_id = et.id
 LEFT JOIN "indB2B".brands               b   ON b.id = bel.brand_id AND b.is_active = true
 GROUP BY et.id, et.name, et.slug, et.description, et.is_active, bc.name, bc.slug;
 
--- v_shipment_cost_summary: estimated freight cost rollup per shipment
--- Uses override value when populated, otherwise uses generated est_freight_cost.
+-- v_shipment_cost_summary: rollup per shipment
 CREATE OR REPLACE VIEW "indB2B".v_shipment_cost_summary AS
 SELECT
   s.id                                                                        AS shipment_id,
@@ -290,6 +308,60 @@ SELECT
 FROM "indB2B".shipments s
 LEFT JOIN "indB2B".shipment_legs sl ON sl.shipment_id = s.id
 GROUP BY s.id, s.reference_number, s.status;
+
+-- v_shipment_legs_costed: per-leg costed view with zip distance lookup
+-- Priority chain:
+--   effective_miles:        est_miles (manual) > zip_distances lookup
+--   effective_freight_cost: est_freight_cost_override > est_freight_cost (generated) > on-the-fly with looked_up_miles
+CREATE OR REPLACE VIEW "indB2B".v_shipment_legs_costed AS
+SELECT
+  sl.id,
+  sl.shipment_id,
+  sl.sequence,
+  sl.status,
+  sl.carrier_id,
+  sl.tracking_number,
+  sl.shipped_at,
+  sl.received_at,
+  fn.zip_code                                      AS from_zip,
+  tn.zip_code                                      AS to_zip,
+  sl.weight_lbs,
+  sl.est_cost_per_mile,
+  sl.est_miles,
+  sl.est_freight_cost,
+  sl.est_freight_cost_override,
+  COALESCE(zd_fwd.miles, zd_rev.miles)             AS looked_up_miles,
+  COALESCE(
+    sl.est_miles,
+    zd_fwd.miles,
+    zd_rev.miles
+  )                                                AS effective_miles,
+  COALESCE(
+    sl.est_freight_cost_override,
+    sl.est_freight_cost,
+    CASE
+      WHEN sl.weight_lbs IS NOT NULL
+       AND sl.est_cost_per_mile IS NOT NULL
+       AND COALESCE(zd_fwd.miles, zd_rev.miles) IS NOT NULL
+      THEN ROUND(
+        sl.weight_lbs
+        * COALESCE(zd_fwd.miles, zd_rev.miles)
+        * sl.est_cost_per_mile,
+        5)
+      ELSE NULL
+    END
+  )                                                AS effective_freight_cost,
+  sl.created_at,
+  sl.updated_at
+FROM "indB2B".shipment_legs sl
+JOIN  "indB2B".shipping_nodes fn ON fn.id = sl.from_node_id
+JOIN  "indB2B".shipping_nodes tn ON tn.id = sl.to_node_id
+LEFT JOIN "indB2B".zip_distances zd_fwd
+  ON zd_fwd.zip_from = LEFT(fn.zip_code, 5)
+ AND zd_fwd.zip_to   = LEFT(tn.zip_code, 5)
+LEFT JOIN "indB2B".zip_distances zd_rev
+  ON zd_rev.zip_from = LEFT(tn.zip_code, 5)
+ AND zd_rev.zip_to   = LEFT(fn.zip_code, 5);
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -307,6 +379,7 @@ ALTER TABLE "indB2B".shipping_nodes        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "indB2B".carriers              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "indB2B".shipments             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "indB2B".shipment_legs         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "indB2B".zip_distances         ENABLE ROW LEVEL SECURITY;
 
 -- Active-only public read
 CREATE POLICY "public_read_brand_categories"  ON "indB2B".brand_categories  FOR SELECT TO anon, authenticated USING (is_active = true);
@@ -322,5 +395,6 @@ CREATE POLICY "public_read_brand_industry_links"   ON "indB2B".brand_industry_li
 CREATE POLICY "public read shipping_nodes"         ON "indB2B".shipping_nodes         FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "public read shipments"              ON "indB2B".shipments              FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "public read shipment_legs"          ON "indB2B".shipment_legs          FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "public read zip_distances"          ON "indB2B".zip_distances          FOR SELECT TO anon, authenticated USING (true);
 
 -- sessions: NO public policy — service_role only

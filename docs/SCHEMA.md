@@ -1,8 +1,8 @@
 # indB2B Schema Reference
 
-> Last updated: 2026-06-25 (sessions 1–18)
+> Last updated: 2026-06-25 (sessions 1–19)
 
-## Tables (12)
+## Tables (13)
 
 ### brand_categories
 | Column | Type | Notes |
@@ -140,14 +140,28 @@ Generalized location node. `supplier_zip_codes` is a compatibility view.
 | shipped_at | timestamptz | |
 | received_at | timestamptz | |
 | weight_lbs | numeric(10,5) | Weight for this leg |
-| est_miles | numeric(10,5) | Zip-to-zip distance estimate |
+| est_miles | numeric(10,5) | Manual distance override |
 | est_cost_per_mile | numeric(10,5) | Carrier/route rate estimate |
-| est_freight_cost | numeric(10,5) GENERATED STORED | `weight_lbs * est_miles * est_cost_per_mile`; NULL if any input is NULL |
-| est_freight_cost_override | numeric(10,5) | Manual override; takes precedence in view rollups |
+| est_freight_cost | numeric(10,5) GENERATED STORED | weight_lbs × est_miles × est_cost_per_mile; NULL if any input is NULL |
+| est_freight_cost_override | numeric(10,5) | Manual cost override; takes precedence in all rollups |
 | created_at | timestamptz | |
 | updated_at | timestamptz | auto-trigger |
 
-## Views (4)
+### zip_distances
+Pre-populated zip code pair distance lookup. Bidirectional: store one direction, view queries both.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| zip_from | varchar(5) NOT NULL | 5-digit zip |
+| zip_to | varchar(5) NOT NULL | 5-digit zip |
+| miles | numeric(10,5) NOT NULL | Must be > 0 |
+| source | text NOT NULL | manual / api / estimate |
+| notes | text | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
+| PK | (zip_from, zip_to) | |
+
+## Views (5)
 
 ### supplier_zip_codes
 Compatibility view over `shipping_nodes WHERE node_type = 'supplier'`.
@@ -171,17 +185,39 @@ Estimated freight cost rollup per shipment. Uses `est_freight_cost_override` whe
 | total_weight_lbs | |
 | total_est_miles | |
 
+### v_shipment_legs_costed
+Per-leg costed view with automatic zip-to-zip distance lookup.
+
+**Priority chains:**
+- `effective_miles`: `est_miles` (manual) → `zip_distances` lookup (bidirectional)
+- `effective_freight_cost`: `est_freight_cost_override` → `est_freight_cost` (generated) → on-the-fly using `looked_up_miles`
+
+| Column | Notes |
+|--------|-------|
+| id, shipment_id, sequence, status | |
+| carrier_id, tracking_number, shipped_at, received_at | |
+| from_zip, to_zip | From shipping_nodes |
+| weight_lbs, est_cost_per_mile | |
+| est_miles | Manual entry on leg |
+| est_freight_cost | Generated column value |
+| est_freight_cost_override | Manual override |
+| looked_up_miles | From zip_distances (bidirectional) |
+| effective_miles | COALESCE(est_miles, looked_up_miles) |
+| effective_freight_cost | Override → generated → on-the-fly with lookup |
+| created_at, updated_at | |
+
 ## Shipping Journey Model
 - **Point A** — supplier origin (`node_type = 'supplier'`)
 - **Point B** — first receiver (warehouse, distributor, etc.)
 - **Point C+** — any subsequent nodes
 - Each hop is one row in `shipment_legs` with a `sequence` number
-- Cost fields on each leg: inputs (`weight_lbs`, `est_miles`, `est_cost_per_mile`) → generated `est_freight_cost` → optional `est_freight_cost_override`
+- Cost fields: inputs → `est_freight_cost` (generated) → optional override
+- Distance lookup via `zip_distances`; auto-applied in `v_shipment_legs_costed`
 - Actual/invoiced costs live in financial tables (separate schema, Phase 2+)
 
 ## RLS Summary
 | Table | Policy |
 |-------|--------|
 | brand_categories, brands, industries, equipment_types, carriers | Public SELECT where is_active = true |
-| brand_aliases, brand_equipment_links, brand_industry_links, shipping_nodes, shipments, shipment_legs | Public SELECT (all rows) |
+| brand_aliases, brand_equipment_links, brand_industry_links, shipping_nodes, shipments, shipment_legs, zip_distances | Public SELECT (all rows) |
 | sessions | No public policy — service_role only |
