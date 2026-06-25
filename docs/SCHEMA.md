@@ -1,95 +1,46 @@
 # indB2B Schema Reference
 
-All tables and views reside in the PostgreSQL schema `indB2B`.
-Last synced: 2026-06-25
+> Last updated: 2026-06-25 (sessions 1–18)
 
-## Design Principles
+## Tables (12)
 
-- UUID primary keys throughout
-- `created_at` / `updated_at` on every table; `updated_at` auto-set via trigger
-- Soft deletes via `is_active` boolean where appropriate
-- Normalized to 3NF; denormalized views for app consumption
-- RLS enabled on all 12 tables; `sessions` is service_role only
+### brand_categories
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | gen_random_uuid() |
+| name | text UNIQUE NOT NULL | |
+| slug | text UNIQUE NOT NULL | |
+| description | text | |
+| is_active | boolean NOT NULL | Default true |
+| created_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-## Entity Relationship Summary
-
-```
-brand_categories
-    └── brands (many per category)
-            └── brand_aliases (alternate names)
-            └── brand_industry_links  ─── industries
-            └── brand_equipment_links ─── equipment_types
-
-shipping_nodes (node_type: supplier | warehouse | distributor | customer)
-    └── shipments (origin_node_id, destination_node_id)
-            └── shipment_legs (sequence, from_node_id, to_node_id, carrier_id)
-                    └── carriers
-
-Views:
-    supplier_zip_codes  ← shipping_nodes WHERE node_type = 'supplier'
-    v_brands_full       ← brands + category + aliases + industries + equipment_types
-    v_equipment_brands  ← equipment_types + category + brands[]
-```
-
-## Shipping Journey Model
-
-A shipment is a sequence of legs:
-- **Point A** — supplier origin (`node_type = 'supplier'`)
-- **Point B** — first receiver (warehouse, distributor, etc.)
-- **Point C+** — any subsequent nodes
-
-Each leg is independent: `from_node × to_node → carrier + tracking + timestamps`.
-Cost calculation logic is deferred to Phase 2.
-
----
-
-## Tables
-
-### `indB2B.brand_categories`
-Top-level product groupings (e.g., PLCs, Robotics, Motors).
-
+### industries
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
 | name | text UNIQUE NOT NULL | |
 | slug | text UNIQUE NOT NULL | |
 | description | text | |
-| is_active | boolean | default true |
+| is_active | boolean NOT NULL | Default true |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.industries`
-Target industries for brand/equipment associations.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| name | text UNIQUE NOT NULL | |
-| slug | text UNIQUE NOT NULL | |
-| description | text | |
-| is_active | boolean | default true |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
-
-### `indB2B.brands`
-Core brand registry.
-
+### brands
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
 | name | text UNIQUE NOT NULL | |
 | slug | text UNIQUE NOT NULL | |
 | category_id | uuid FK → brand_categories | ON DELETE SET NULL |
-| parent_brand_id | uuid FK → brands (self) | For subsidiaries |
+| parent_brand_id | uuid FK → brands | Self-ref, ON DELETE SET NULL |
 | website | text | |
 | notes | text | |
-| is_active | boolean | default true |
+| is_active | boolean NOT NULL | Default true |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.brand_aliases`
-Alternate names, trade names, former names.
-
+### brand_aliases
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
@@ -98,9 +49,7 @@ Alternate names, trade names, former names.
 | notes | text | |
 | created_at | timestamptz | |
 
-### `indB2B.equipment_types`
-Types of equipment (e.g., VFD, Conveyor Belt, Robot Arm).
-
+### equipment_types
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
@@ -108,135 +57,131 @@ Types of equipment (e.g., VFD, Conveyor Belt, Robot Arm).
 | slug | text UNIQUE NOT NULL | |
 | category_id | uuid FK → brand_categories | ON DELETE SET NULL |
 | description | text | |
-| is_active | boolean | default true |
+| is_active | boolean NOT NULL | Default true |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.brand_industry_links`
-Many-to-many: brands ↔ industries.
-
+### brand_industry_links (M:M)
 | Column | Type | Notes |
 |--------|------|-------|
 | brand_id | uuid FK → brands | ON DELETE CASCADE |
 | industry_id | uuid FK → industries | ON DELETE CASCADE |
-| PRIMARY KEY | (brand_id, industry_id) | |
 
-### `indB2B.brand_equipment_links`
-Many-to-many: brands ↔ equipment types.
-
+### brand_equipment_links (M:M)
 | Column | Type | Notes |
 |--------|------|-------|
 | brand_id | uuid FK → brands | ON DELETE CASCADE |
 | equipment_type_id | uuid FK → equipment_types | ON DELETE CASCADE |
-| PRIMARY KEY | (brand_id, equipment_type_id) | |
 
-### `indB2B.sessions`
-Agent audit log. No public RLS policy — service_role only.
-
+### sessions
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| started_at | timestamptz | default now() |
-| closed_at | timestamptz | nullable |
+| started_at | timestamptz | Default now() |
+| closed_at | timestamptz | |
 | agent | text | |
 | summary | text | |
 | status | text | completed / attempted / abandoned |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.shipping_nodes`
-Generalized shipping location node. Covers all points in a shipment journey.
-`supplier_zip_codes` is a compatibility view over this table.
+### shipping_nodes
+Generalized location node. `supplier_zip_codes` is a compatibility view.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
 | node_type | text NOT NULL | supplier / warehouse / distributor / customer |
-| brand_id | uuid FK → brands | Nullable; ON DELETE SET NULL |
-| name | text NOT NULL | Human-readable label |
+| brand_id | uuid FK → brands | ON DELETE SET NULL |
+| name | text NOT NULL | |
 | zip_code | varchar(10) NOT NULL | |
 | city | varchar(100) | |
 | state_code | char(2) | |
-| is_primary | boolean | default false |
+| is_primary | boolean NOT NULL | Default false |
 | notes | text | |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.carriers`
-Freight and parcel carriers. Referenced by `shipment_legs` with ON DELETE RESTRICT.
-
+### carriers
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
 | name | text NOT NULL | |
-| scac_code | varchar(4) | Unique where not null (Standard Carrier Alpha Code) |
+| scac_code | varchar(4) | UNIQUE where not null |
 | website | text | |
-| is_active | boolean | default true |
+| is_active | boolean NOT NULL | Default true |
 | notes | text | |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.shipments`
-Parent record grouping all legs of a single shipment journey.
-
+### shipments
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| reference_number | text UNIQUE NOT NULL | Human-readable shipment ID |
+| reference_number | text UNIQUE NOT NULL | |
 | origin_node_id | uuid FK → shipping_nodes | ON DELETE RESTRICT |
 | destination_node_id | uuid FK → shipping_nodes | ON DELETE RESTRICT |
-| status | text | draft / active / completed / cancelled |
+| status | text NOT NULL | draft / active / completed / cancelled |
 | notes | text | |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
+| updated_at | timestamptz | auto-trigger |
 
-### `indB2B.shipment_legs`
-Individual leg of a shipment (Point A→B, B→C, etc.). Sequence is unique per shipment.
-
+### shipment_legs
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
 | shipment_id | uuid FK → shipments | ON DELETE CASCADE |
-| sequence | integer NOT NULL | Leg order within shipment |
+| sequence | integer NOT NULL | UNIQUE per shipment |
 | from_node_id | uuid FK → shipping_nodes | ON DELETE RESTRICT |
 | to_node_id | uuid FK → shipping_nodes | ON DELETE RESTRICT |
-| status | text | pending / in_transit / delivered / cancelled |
-| carrier_id | uuid FK → carriers | Nullable; ON DELETE RESTRICT |
+| status | text NOT NULL | pending / in_transit / delivered / cancelled |
+| carrier_id | uuid FK → carriers | ON DELETE RESTRICT, nullable |
 | tracking_number | text | |
-| shipped_at | timestamptz | Nullable |
-| received_at | timestamptz | Nullable |
+| shipped_at | timestamptz | |
+| received_at | timestamptz | |
+| weight_lbs | numeric(10,5) | Weight for this leg |
+| est_miles | numeric(10,5) | Zip-to-zip distance estimate |
+| est_cost_per_mile | numeric(10,5) | Carrier/route rate estimate |
+| est_freight_cost | numeric(10,5) GENERATED STORED | `weight_lbs * est_miles * est_cost_per_mile`; NULL if any input is NULL |
+| est_freight_cost_override | numeric(10,5) | Manual override; takes precedence in view rollups |
 | created_at | timestamptz | |
-| updated_at | timestamptz | |
-| UNIQUE | (shipment_id, sequence) | |
+| updated_at | timestamptz | auto-trigger |
 
----
+## Views (4)
 
-## Views
-
-### `indB2B.supplier_zip_codes`
+### supplier_zip_codes
 Compatibility view over `shipping_nodes WHERE node_type = 'supplier'`.
-Exposes: id, brand_id, zip_code, city, state_code, is_primary, notes, created_at, updated_at.
-Used by AppSheet reference app.
 
-### `indB2B.v_brands_full`
-One row per brand. Joins category, parent brand, and aggregates aliases, industries, and equipment types as arrays.
+### v_brands_full
+One row per brand with category, parent brand, and aggregated aliases, industries, and equipment types.
 
-| Column | Notes |
-|--------|-------|
-| id, name, slug, website, notes, is_active | From brands |
-| category, category_slug | From brand_categories |
-| parent_brand | From brands (self-join) |
-| aliases | text[] — aggregated from brand_aliases |
-| industries | text[] — aggregated from brand_industry_links + industries |
-| equipment_types | text[] — aggregated from brand_equipment_links + equipment_types |
-| created_at, updated_at | From brands |
+### v_equipment_brands
+One row per equipment type with aggregated brand list and count.
 
-### `indB2B.v_equipment_brands`
-One row per equipment type. Aggregates all active associated brands alphabetically.
+### v_shipment_cost_summary
+Estimated freight cost rollup per shipment. Uses `est_freight_cost_override` when populated, otherwise `est_freight_cost`.
 
 | Column | Notes |
 |--------|-------|
-| id, equipment_type, equipment_slug, description, is_active | From equipment_types |
-| category, category_slug | From brand_categories |
-| brands | text[] — active brands sorted alphabetically |
-| brand_count | integer |
+| shipment_id | |
+| reference_number | |
+| status | |
+| leg_count | |
+| total_est_freight_cost | SUM of COALESCE(override, generated) per leg |
+| total_weight_lbs | |
+| total_est_miles | |
+
+## Shipping Journey Model
+- **Point A** — supplier origin (`node_type = 'supplier'`)
+- **Point B** — first receiver (warehouse, distributor, etc.)
+- **Point C+** — any subsequent nodes
+- Each hop is one row in `shipment_legs` with a `sequence` number
+- Cost fields on each leg: inputs (`weight_lbs`, `est_miles`, `est_cost_per_mile`) → generated `est_freight_cost` → optional `est_freight_cost_override`
+- Actual/invoiced costs live in financial tables (separate schema, Phase 2+)
+
+## RLS Summary
+| Table | Policy |
+|-------|--------|
+| brand_categories, brands, industries, equipment_types, carriers | Public SELECT where is_active = true |
+| brand_aliases, brand_equipment_links, brand_industry_links, shipping_nodes, shipments, shipment_legs | Public SELECT (all rows) |
+| sessions | No public policy — service_role only |

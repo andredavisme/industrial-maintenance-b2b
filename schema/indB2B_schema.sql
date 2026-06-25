@@ -2,7 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
--- Last synced: 2026-06-25 (sessions 1–14)
+-- Last synced: 2026-06-25 (sessions 1–18)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -192,18 +192,30 @@ CREATE TRIGGER set_updated_at_shipments
 
 -- ---- shipment_legs ----------------------------------------------
 CREATE TABLE IF NOT EXISTS "indB2B".shipment_legs (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  shipment_id     uuid NOT NULL REFERENCES "indB2B".shipments(id) ON DELETE CASCADE,
-  sequence        integer NOT NULL,
-  from_node_id    uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
-  to_node_id      uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
-  status          text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','in_transit','delivered','cancelled')),
-  carrier_id      uuid REFERENCES "indB2B".carriers(id) ON DELETE RESTRICT,
-  tracking_number text,
-  shipped_at      timestamptz,
-  received_at     timestamptz,
-  created_at      timestamptz NOT NULL DEFAULT now(),
-  updated_at      timestamptz NOT NULL DEFAULT now(),
+  id                        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shipment_id               uuid NOT NULL REFERENCES "indB2B".shipments(id) ON DELETE CASCADE,
+  sequence                  integer NOT NULL,
+  from_node_id              uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
+  to_node_id                uuid NOT NULL REFERENCES "indB2B".shipping_nodes(id) ON DELETE RESTRICT,
+  status                    text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','in_transit','delivered','cancelled')),
+  carrier_id                uuid REFERENCES "indB2B".carriers(id) ON DELETE RESTRICT,
+  tracking_number           text,
+  shipped_at                timestamptz,
+  received_at               timestamptz,
+  -- Cost estimation fields
+  weight_lbs                numeric(10,5),
+  est_miles                 numeric(10,5),
+  est_cost_per_mile         numeric(10,5),
+  est_freight_cost          numeric(10,5) GENERATED ALWAYS AS (
+    CASE
+      WHEN weight_lbs IS NOT NULL AND est_miles IS NOT NULL AND est_cost_per_mile IS NOT NULL
+      THEN ROUND(weight_lbs * est_miles * est_cost_per_mile, 5)
+      ELSE NULL
+    END
+  ) STORED,
+  est_freight_cost_override numeric(10,5),
+  created_at                timestamptz NOT NULL DEFAULT now(),
+  updated_at                timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT uq_shipment_leg_sequence UNIQUE (shipment_id, sequence)
 );
 
@@ -263,6 +275,21 @@ LEFT JOIN "indB2B".brand_categories      bc  ON bc.id = et.category_id
 LEFT JOIN "indB2B".brand_equipment_links bel ON bel.equipment_type_id = et.id
 LEFT JOIN "indB2B".brands               b   ON b.id = bel.brand_id AND b.is_active = true
 GROUP BY et.id, et.name, et.slug, et.description, et.is_active, bc.name, bc.slug;
+
+-- v_shipment_cost_summary: estimated freight cost rollup per shipment
+-- Uses override value when populated, otherwise uses generated est_freight_cost.
+CREATE OR REPLACE VIEW "indB2B".v_shipment_cost_summary AS
+SELECT
+  s.id                                                                        AS shipment_id,
+  s.reference_number,
+  s.status,
+  COUNT(sl.id)                                                                AS leg_count,
+  SUM(COALESCE(sl.est_freight_cost_override, sl.est_freight_cost))           AS total_est_freight_cost,
+  SUM(sl.weight_lbs)                                                          AS total_weight_lbs,
+  SUM(sl.est_miles)                                                           AS total_est_miles
+FROM "indB2B".shipments s
+LEFT JOIN "indB2B".shipment_legs sl ON sl.shipment_id = s.id
+GROUP BY s.id, s.reference_number, s.status;
 
 -- ============================================================
 -- ROW LEVEL SECURITY

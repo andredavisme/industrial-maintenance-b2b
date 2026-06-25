@@ -13,10 +13,10 @@
 - Backend / calculation architecture support
 
 ## Current State
-🟢 **Phase 1 — COMPLETE. All schema, seed data, and reference files committed.**
+🟢 **Phase 1 — COMPLETE. Phase 2 cost estimation layer added (session 18).**
 
 **Tables (12):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes
-**Views (3):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat)
+**Views (4):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary
 **RLS:** Enabled on all 12 tables ✅
 
 ### File Status
@@ -37,8 +37,16 @@
 - **Point B** — first receiver (warehouse, distributor, etc.)
 - **Point C+** — any subsequent nodes
 - Each leg recorded in `shipment_legs` with sequence, carrier, tracking, timestamps
-- Cost calculation logic deferred to Phase 2
+- Cost inputs per leg: `weight_lbs`, `est_miles`, `est_cost_per_mile`
+- `est_freight_cost` = generated column (`weight_lbs * est_miles * est_cost_per_mile`)
+- `est_freight_cost_override` = manual override; used in rollups when populated
+- Actual/invoiced costs deferred to financial tables (Phase 2+)
 - AppSheet app = reference library only (no calc logic)
+
+## Completed — 2026-06-25 (Session 18)
+- [x] Added cost fields to `shipment_legs`: `weight_lbs`, `est_miles`, `est_cost_per_mile`, `est_freight_cost` (GENERATED STORED), `est_freight_cost_override`
+- [x] Created `v_shipment_cost_summary` view (rollup per shipment using override-first COALESCE)
+- [x] Synced `schema/indB2B_schema.sql` and `docs/SCHEMA.md`
 
 ## Completed — 2026-06-25 (Sessions 15–17)
 - [x] Synced `schema/indB2B_schema.sql` and `docs/SCHEMA.md`
@@ -55,11 +63,13 @@
 
 | Priority | Task |
 |----------|------|
-| ⬜ Low | Cost calculation logic per shipment leg |
+| ⬜ Medium | Zip-to-zip distance lookup or reference table to auto-populate `est_miles` |
 | ⬜ Low | RFQ functionality (scope TBD) |
+| ⬜ Low | Financial tables for actual/invoiced costs per order |
 
 ## Open Questions
-- Is RFQ functionality in scope for Phase 1 or Phase 2?
+- Is RFQ functionality in scope for Phase 2?
+- Should `est_miles` be auto-populated from a zip code distance table, or always manual?
 
 ## AppSheet Reference
 [AppSheet app](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8) — reference library for supplier zip codes only.
