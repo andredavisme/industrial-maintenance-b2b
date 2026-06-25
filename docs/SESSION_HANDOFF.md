@@ -13,13 +13,13 @@
 - Backend / calculation architecture support
 
 ## Current State
-🟢 **Phase 1 — Schema and docs fully in sync.**
+🟢 **Phase 1 — Shipping architecture schema and seed data complete.**
 
 **Tables (12):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes
 **Views (3):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat)
 **RLS:** Enabled on all 12 tables ✅
 **Schema files:** `schema/indB2B_schema.sql` ✅ in sync | `docs/SCHEMA.md` ✅ in sync
-**Data:** 101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links
+**Data:** 101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers (13 active + 1 inactive)
 
 ## Shipping Journey Model
 - **Point A** — supplier origin (`shipping_nodes` where `node_type = 'supplier'`)
@@ -29,27 +29,23 @@
 - Cost calculation logic deferred to Phase 2
 - AppSheet app = reference library only (no calc logic)
 
+## Completed — 2026-06-25 (Session 16)
+- [x] Seeded `carriers` — 14 rows: UPS, FedEx, USPS, SAIA, XPO, Old Dominion, Estes Express, R+L Carriers, AAA Cooper, Forward Air, FedEx Freight, TForce Freight, C.H. Robinson (active); Ross Express ROSX (inactive — historical New England LTL)
+
 ## Completed — 2026-06-25 (Session 15)
-- [x] Synced `schema/indB2B_schema.sql` with all sessions 13–14 changes
-- [x] Updated `docs/SCHEMA.md`: full table docs for all 12 tables + 3 views + shipping journey model
+- [x] Synced `schema/indB2B_schema.sql` and `docs/SCHEMA.md` with all sessions 13–14
 
-## Completed — 2026-06-25 (Session 14)
-- [x] Created `carriers`, `shipments`, `shipment_legs` tables with RLS, triggers, indexes
-
-## Completed — 2026-06-25 (Session 13)
-- [x] Created `shipping_nodes`; migrated 59 supplier zip codes; `supplier_zip_codes` → compat view
-
-## Completed — 2026-06-25 (Sessions 1–12)
-- [x] Full schema, all seed data, brand/category/industry/equipment types/links, views, RLS
+## Completed — 2026-06-25 (Sessions 1–14)
+- [x] Full schema, all seed data, brand/category/industry/equipment/links, views, RLS, shipping architecture
 
 ## Next Steps
 
 | Priority | Task |
 |----------|------|
-| 🔴 High | Seed `carriers` table (UPS, FedEx, SAIA, XPO, Old Dominion, etc.) |
 | 🟡 Med  | Update `data/brands_seed.sql` (52 new brands + zip codes) |
 | 🟡 Med  | Commit `Package-Shipping-Reference-Supplier-Zip-Codes.csv` to `data/` |
 | 🟡 Med  | Commit `branch-shelf.csv` to `data/` |
+| 🟡 Med  | Update `docs/DATA_CATALOG.md` to reflect current brand/carrier state |
 | ⬜ Low  | Phase 2: cost calculation logic per shipment leg |
 | ⬜ Low  | RFQ functionality (Phase 1 or 2 — TBD) |
 
