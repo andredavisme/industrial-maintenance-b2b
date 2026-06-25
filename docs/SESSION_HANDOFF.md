@@ -9,11 +9,22 @@
 ## Current State
 🟡 **Phase 1 — Data Foundation** in progress.
 
-## Completed This Session
+## Completed — 2026-06-25 (Session 2)
+- [x] Reviewed live DB state: 10 categories, 31 brands, 5 industries, 5 aliases confirmed
+- [x] Received and analyzed `data/branch-shelf.csv` — physical warehouse inventory catalog
+  - 72 unique shelves, 77 distinct product types, 125 total entries
+  - ~14% non-stock (Unused, Facility Storage, Discards)
+  - Top categories by shelf count: Bearings (27), Fasteners & Hardware (13), Belts & Drives (11)
+  - Top product types: Pillow Block Bearings (10 shelves), Roller Bearings (9 shelves)
+- [x] Generated shelf-frequency analysis and category volume charts
+- [x] Identified critical schema gap: **Bearings** and **Belts & Drives** are not in `brand_categories` but are the #1 and #3 highest-volume categories in the warehouse
+- [x] Identified **Lubricants & MRO** as a new category needed (Grease, Lubricant, Grease Zerks)
+
+## Completed — 2026-06-25 (Session 1)
 - [x] Created repo `andredavisme/industrial-maintenance-b2b`
 - [x] Defined project structure and all foundation documents
 - [x] Drafted and applied `indB2B` schema to Supabase (project: nmemmfblpzrkwyljpmvp)
-- [x] Seeded brand categories (10), industries (5), brands (27), aliases (5)
+- [x] Seeded brand categories (10), industries (5), brands (27→31), aliases (5)
 - [x] Added `indB2B`.sessions table for agent audit logging
 - [x] Updated Space instructions to use live session-init/closeout pattern
 
@@ -21,9 +32,12 @@
 
 | Priority | Task |
 |----------|------|
+| 🔴 High | Add missing `brand_categories`: Bearings, Belts & Drives, Lubricants & MRO |
+| 🔴 High | Seed brands for Bearings (SKF, NSK, Timken, Dodge/Baldor) and Belts & Drives (Gates, Dayco, Browning/Rexnord) |
 | 🔴 High | Add RLS policies for public read on brands, brand_categories, industries |
-| 🔴 High | Expand brand list — more Reddit threads + industry sources |
-| 🟡 Med  | Seed equipment_types (VFDs, robot arms, conveyors, etc.) |
+| 🟡 Med  | Seed `equipment_types` using `branch-shelf.csv` product types as source data |
+| 🟡 Med  | Seed brands for remaining empty categories: HVAC, Conveyors, Pneumatics, Safety, Fasteners |
+| 🟡 Med  | Seed `brand_industry_links` and `brand_equipment_links` (M:M — currently empty) |
 | 🟡 Med  | Create views: v_brands_full, v_equipment_brands |
 | 🟡 Med  | Add SCHEMA.md entry for sessions table |
 | ⬜ Low  | Scaffold web app consuming indB2B schema |
@@ -32,6 +46,7 @@
 ## Open Questions
 - Will the web app be Cloudflare Pages or GitHub Pages?
 - Is RFQ functionality in scope for Phase 1 or Phase 2?
+- Should `branch-shelf.csv` be committed to the repo as source data?
 
 ## Key File Locations
 
@@ -39,6 +54,7 @@
 |------|---------|
 | `schema/indB2B_schema.sql` | Full DDL — run to init DB |
 | `data/brands_seed.sql` | Cumulative seed data |
+| `data/branch-shelf.csv` | Physical warehouse shelf catalog (source of truth for product types) |
 | `docs/SCHEMA.md` | Human-readable schema reference |
 | `docs/DATA_CATALOG.md` | Brand/category index with status |
 | `docs/DEV_GUIDE.md` | Setup instructions |
