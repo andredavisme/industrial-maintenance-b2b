@@ -32,6 +32,8 @@
 
 | Priority | Task |
 |----------|------|
+| 🔴 High | **Create `supplier_zip_codes` table** — FK to `brands.id` (NOT NULL, no orphans enforced at DB level). Brand inserts must be accompanied by a zip code row. |
+| 🔴 High | **Seed 60 supplier zip codes** from `Package-Shipping-Reference-Supplier-Zip-Codes.csv` — insert new brands first, then zip code rows. Only Keyence and Eaton already exist in `brands`; all others need to be added. |
 | 🔴 High | Add missing `brand_categories`: Bearings, Belts & Drives, Lubricants & MRO |
 | 🔴 High | Seed brands for Bearings (SKF, NSK, Timken, Dodge/Baldor) and Belts & Drives (Gates, Dayco, Browning/Rexnord) |
 | 🔴 High | Add RLS policies for public read on brands, brand_categories, industries |
@@ -43,10 +45,17 @@
 | ⬜ Low  | Scaffold web app consuming indB2B schema |
 | ⬜ Low  | Design local-serve app architecture |
 
+## Shipping Feature Context
+A new AppSheet app ([link](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8)) records supplier origin zip codes to calculate estimated shipping costs. The CSV source (`Package-Shipping-Reference-Supplier-Zip-Codes.csv`) has 60 supplier → zip code pairs. These suppliers map to brands in the schema. The `supplier_zip_codes` table will enforce:
+- `brand_id` is NOT NULL with a FK constraint to `brands.id`
+- No zip code row can exist without a valid brand
+- Brand inserts should always include a corresponding zip code row
+
 ## Open Questions
 - Will the web app be Cloudflare Pages or GitHub Pages?
 - Is RFQ functionality in scope for Phase 1 or Phase 2?
 - Should `branch-shelf.csv` be committed to the repo as source data?
+- Should shipping rate/zone calculation logic live in Supabase (Edge Functions or tables) or remain in AppSheet?
 
 ## Key File Locations
 
@@ -55,6 +64,7 @@
 | `schema/indB2B_schema.sql` | Full DDL — run to init DB |
 | `data/brands_seed.sql` | Cumulative seed data |
 | `data/branch-shelf.csv` | Physical warehouse shelf catalog (source of truth for product types) |
+| `data/Package-Shipping-Reference-Supplier-Zip-Codes.csv` | Supplier origin zip codes for shipping cost estimation |
 | `docs/SCHEMA.md` | Human-readable schema reference |
 | `docs/DATA_CATALOG.md` | Brand/category index with status |
 | `docs/DEV_GUIDE.md` | Setup instructions |
