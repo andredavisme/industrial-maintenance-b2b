@@ -6,83 +6,36 @@ This document tracks entities, their source, and indexing status.
 
 | Slug | Name | Status | Notes |
 |------|------|--------|-------|
-| plcs-control-systems | PLCs & Control Systems | 🟡 Seeding | 6 brands seeded |
-| robotics-automation | Robotics & Automation | 🟡 Seeding | 4 brands seeded |
-| motors-drives | Motors & Drives | 🟡 Seeding | 4 brands seeded |
-| sensing-instrumentation | Sensing & Instrumentation | 🟡 Seeding | 6 brands seeded |
-| heavy-equipment | Heavy Equipment | 🟡 Seeding | 11 brands seeded |
-| hvac-facilities | HVAC & Facilities | ⬜ Planned | No brands yet |
-| conveyors-material-handling | Conveyors & Material Handling | ⬜ Planned | No brands yet |
-| pneumatics-hydraulics | Pneumatics & Hydraulics | ⬜ Planned | No brands yet |
-| safety-equipment | Safety Equipment | ⬜ Planned | No brands yet |
-| fasteners-hardware | Fasteners & Hardware | ⬜ Planned | No brands yet |
-| bearings | Bearings | 🔴 Missing | #1 warehouse category — needs to be added |
-| belts-drives | Belts & Drives | 🔴 Missing | #3 warehouse category — needs to be added |
-| lubricants-mro | Lubricants & MRO | 🔴 Missing | Grease, Lubricant, Grease Zerks present in warehouse |
+| bearings | Bearings | ✅ Complete | 15 brands, 9 equipment types, links seeded |
+| belts-drives | Belts & Drives | ✅ Complete | 12 brands, 7 equipment types, links seeded |
+| conveyors-material-handling | Conveyors & Material Handling | ✅ Complete | 3 brands, 4 equipment types, links seeded |
+| fasteners-hardware | Fasteners & Hardware | ✅ Complete | 5 brands, 5 equipment types, links seeded |
+| heavy-equipment | Heavy Equipment | ✅ Complete | 11 brands, 3 equipment types, links seeded |
+| hvac-facilities | HVAC & Facilities | ✅ Complete | 3 brands, 3 equipment types, links seeded |
+| lubricants-mro | Lubricants & MRO | ✅ Complete | 14 brands, 5 equipment types, links seeded |
+| motors-drives | Motors & Drives | ✅ Complete | 9 brands, 5 equipment types, links seeded |
+| plcs-control-systems | PLCs & Control Systems | ✅ Complete | 6 brands, 5 equipment types, links seeded |
+| pneumatics-hydraulics | Pneumatics & Hydraulics | ✅ Complete | 5 brands, 6 equipment types, links seeded |
+| robotics-automation | Robotics & Automation | ✅ Complete | 4 brands, 3 equipment types, links seeded |
+| safety-equipment | Safety Equipment | ✅ Complete | 1 brand, 3 equipment types, links seeded |
+| sensing-instrumentation | Sensing & Instrumentation | ✅ Complete | 9 brands, 6 equipment types, links seeded |
 
-## Brands (Initial Seed — from r/IndustrialMaintenance)
+## Link Tables
 
-### PLCs & Control Systems
-- Allen-Bradley (Rockwell Automation)
-- Siemens
-- Omron
-- Schneider Electric
-- ABB
-- Eaton
+| Table | Rows | Status |
+|-------|------|--------|
+| `brand_equipment_links` | 606 | ✅ Seeded |
+| `brand_industry_links` | 250 | ✅ Seeded |
 
-### Robotics & Automation
-- Fanuc
-- Motoman (Yaskawa)
-- Kuka
-- Star Automation
-- ABB Robotics
+## Industries
 
-### Motors & Drives
-- ABB / Baldor
-- Siemens
-- Regal-Beloit
-- Leeson
-- Nidec
-
-### Sensing & Instrumentation
-- Keyence
-- Endress+Hauser
-- Emerson / Rosemount
-- Vega
-- Swan Analytical
-- Banner Engineering
-
-### Heavy Equipment
-- Caterpillar (Cat)
-- John Deere
-- Komatsu
-- Hitachi
-- Volvo CE
-- Case
-- Bobcat
-- Takeuchi
-- Metso
-- Kolberg
-- Terex
-
-### Bearings (🔴 Category not yet in DB)
-_Suggested brands to seed: SKF, NSK, Timken, Dodge (Baldor/ABB), Rexnord, NTN, Peer_
-
-### Belts & Drives (🔴 Category not yet in DB)
-_Suggested brands to seed: Gates, Dayco, Browning (Rexnord), Jason, Bando, Fenner_
-
-### Lubricants & MRO (🔴 Category not yet in DB)
-_Suggested brands to seed: Shell Lubricants, Mobil, Castrol, LPS, WD-40 Industrial_
-
-## Industries (Initial)
-
-| Slug | Name |
-|------|------|
-| automotive | Automotive Manufacturing |
-| food-beverage | Food & Beverage Processing |
-| mining-aggregate | Mining & Aggregate |
-| general-industrial | General Industrial / Plant Maintenance |
-| hvac-facilities | HVAC & Facilities |
+| Slug | Name | Brand Count |
+|------|------|-------------|
+| general-industrial | General Industrial / Plant Maintenance | 101 (all brands) |
+| mining-aggregate | Mining & Aggregate | ~23 |
+| automotive | Automotive Manufacturing | ~12 |
+| food-beverage | Food & Beverage Processing | ~12 |
+| hvac-facilities | HVAC & Facilities | ~9 |
 
 ## Warehouse Inventory Source (branch-shelf.csv)
 
