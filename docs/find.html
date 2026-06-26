@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Find Near Me — IndB2B</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav id="nav">
+    <a href="index.html" class="nav-brand">IndB2B</a>
+    <div class="nav-links">
+      <a href="equipment.html">Parts &amp; Equipment</a>
+      <a href="network.html">Supply Chain</a>
+      <a href="find.html" class="active">Find Near Me</a>
+    </div>
+  </nav>
+
+  <main>
+    <h1>Find a Distributor Near You</h1>
+    <div class="search-bar">
+      <input id="zip-input" type="text" placeholder="Enter ZIP code" maxlength="10" />
+      <button id="zip-search" class="btn-primary">Search</button>
+    </div>
+    <div id="find-results"></div>
+  </main>
+
+  <script type="module" src="js/find.js"></script>
+</body>
+</html>
