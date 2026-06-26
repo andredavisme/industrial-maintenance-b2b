@@ -53,8 +53,8 @@ async function loadBrands(equipmentSlug) {
 
   const { data, error } = await supabase
     .from('v_equipment_brands')
-    .select('equipment_type, category, brands, brand_count')
-    .eq('slug', equipmentSlug)
+    .select('equipment_type, equipment_slug, category, brands, brand_count')
+    .eq('equipment_slug', equipmentSlug)
     .single()
 
   if (error || !data) { brandResults.textContent = 'No brands found.'; return }
