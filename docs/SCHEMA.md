@@ -1,6 +1,6 @@
 # indB2B Schema Reference
 
-> Last updated: 2026-06-25 (sessions 1–22)
+> Last updated: 2026-06-26 (sessions 1–24)
 
 ## Tables (19)
 
@@ -247,7 +247,7 @@ Lazy-load distance lookup. No API key required.
 - `200 { miles, source, cached: true/false }` — success
 - `202 { error, queued: true }` — geocode failed, queued for manual review
 
-## Views (5)
+## Views (6)
 
 ### supplier_zip_codes
 Compatibility view over `shipping_nodes WHERE node_type = 'supplier'`.
@@ -265,6 +265,21 @@ Estimated freight cost rollup per shipment.
 Per-leg costed view. Priority chains:
 - `effective_miles`: `est_miles` → `zip_distances` lookup (bidirectional)
 - `effective_freight_cost`: override → generated → on-the-fly with looked-up miles
+
+### v_supply_chain_graph _(added session 24)_
+One row per directed supply chain edge. Enriches each `supply_chain_links` row with full supplier and buyer node details plus four aggregated context arrays.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| link_id | uuid | supply_chain_links.id |
+| link_type | text | vendor_to_distributor, etc. |
+| link_active | boolean | |
+| supplier_id / name / slug / type / website | — | Upstream node fields |
+| buyer_id / name / slug / type / website | — | Downstream node fields |
+| shared_brands | text[] | Brands both parties carry |
+| shared_categories | text[] | Brand categories bridging the edge |
+| shared_industries | text[] | Industries both serve |
+| shared_equipment_types | text[] | Equipment types both cover |
 
 ## RLS Summary
 | Table | Policy |

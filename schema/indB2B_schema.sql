@@ -2,7 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
--- Last synced: 2026-06-25 (sessions 1–22)
+-- Last synced: 2026-06-26 (sessions 1–24)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -431,6 +431,69 @@ LEFT JOIN "indB2B".zip_distances zd_fwd
   ON zd_fwd.zip_from = LEFT(fn.zip_code, 5) AND zd_fwd.zip_to = LEFT(tn.zip_code, 5)
 LEFT JOIN "indB2B".zip_distances zd_rev
   ON zd_rev.zip_from = LEFT(tn.zip_code, 5) AND zd_rev.zip_to = LEFT(fn.zip_code, 5);
+
+-- ---- v_supply_chain_graph (session 24) --------------------------
+-- One row per directed supply chain edge, enriched with both node details
+-- and aggregated arrays of shared brands, categories, industries, equipment types.
+CREATE OR REPLACE VIEW "indB2B".v_supply_chain_graph AS
+SELECT
+  -- Edge identity
+  scl.id                          AS link_id,
+  scl.link_type,
+  scl.is_active                   AS link_active,
+
+  -- Supplier (upstream) node
+  sup.id                          AS supplier_id,
+  sup.name                        AS supplier_name,
+  sup.slug                        AS supplier_slug,
+  sup.actor_type                  AS supplier_type,
+  sup.website                     AS supplier_website,
+
+  -- Buyer (downstream) node
+  buy.id                          AS buyer_id,
+  buy.name                        AS buyer_name,
+  buy.slug                        AS buyer_slug,
+  buy.actor_type                  AS buyer_type,
+  buy.website                     AS buyer_website,
+
+  -- Shared brand(s) — aggregated
+  array_agg(DISTINCT b.name ORDER BY b.name)   AS shared_brands,
+  array_agg(DISTINCT bc.name ORDER BY bc.name) AS shared_categories,
+
+  -- Shared industries — aggregated
+  array_agg(DISTINCT ind.name ORDER BY ind.name) AS shared_industries,
+
+  -- Shared equipment types — aggregated
+  array_agg(DISTINCT et.name ORDER BY et.name)   AS shared_equipment_types
+
+FROM "indB2B".supply_chain_links scl
+JOIN "indB2B".users sup ON sup.id = scl.supplier_id
+JOIN "indB2B".users buy ON buy.id = scl.buyer_id
+
+LEFT JOIN "indB2B".user_brand_links ubl_sup ON ubl_sup.user_id = scl.supplier_id
+LEFT JOIN "indB2B".user_brand_links ubl_buy
+  ON ubl_buy.user_id = scl.buyer_id
+  AND ubl_buy.brand_id = ubl_sup.brand_id
+
+LEFT JOIN "indB2B".brands b ON b.id = ubl_sup.brand_id
+LEFT JOIN "indB2B".brand_categories bc ON bc.id = b.category_id
+
+LEFT JOIN "indB2B".user_industry_links uil_sup ON uil_sup.user_id = scl.supplier_id
+LEFT JOIN "indB2B".user_industry_links uil_buy
+  ON uil_buy.user_id = scl.buyer_id
+  AND uil_buy.industry_id = uil_sup.industry_id
+LEFT JOIN "indB2B".industries ind ON ind.id = uil_sup.industry_id
+
+LEFT JOIN "indB2B".user_equipment_links uel_sup ON uel_sup.user_id = scl.supplier_id
+LEFT JOIN "indB2B".user_equipment_links uel_buy
+  ON uel_buy.user_id = scl.buyer_id
+  AND uel_buy.equipment_type_id = uel_sup.equipment_type_id
+LEFT JOIN "indB2B".equipment_types et ON et.id = uel_sup.equipment_type_id
+
+GROUP BY
+  scl.id, scl.link_type, scl.is_active,
+  sup.id, sup.name, sup.slug, sup.actor_type, sup.website,
+  buy.id, buy.name, buy.slug, buy.actor_type, buy.website;
 
 -- ============================================================
 -- ROW LEVEL SECURITY
