@@ -4,34 +4,86 @@
   overflow: hidden;
 }
 
-/* Sidebar */
+/* ── Sidebar */
 #graph-sidebar {
-  width: 280px;
-  min-width: 220px;
+  width: 260px;
+  min-width: 200px;
   background: white;
   border-right: 1px solid #e0e0e0;
-  overflow-y: auto;
-  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   flex-shrink: 0;
 }
-#sidebar-content h2 { font-size: 1.1rem; margin-bottom: 0.5rem; }
-#sidebar-content .badge { margin-bottom: 0.75rem; }
-#sidebar-content ul { padding-left: 1.1rem; font-size: 0.9rem; color: #333; }
-#sidebar-content ul li { margin-bottom: 0.25rem; }
-#sidebar-content a.sidebar-link {
+
+#sidebar-content {
+  padding: 1.1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid #eee;
+}
+#sidebar-content h2 { font-size: 1rem; margin-bottom: 0.4rem; }
+#sidebar-content ul { padding-left: 1rem; font-size: 0.88rem; color: #333; margin-top: 0.25rem; }
+#sidebar-content ul li { margin-bottom: 0.2rem; }
+#sidebar-content .btn-primary { display: inline-block; margin-top: 0.9rem; font-size: 0.85rem; padding: 0.45rem 1rem; }
+
+/* ── Legend */
+#legend {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 1rem 1rem;
+}
+.legend-heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin-bottom: 0.5rem;
+}
+.legend-section { margin-bottom: 0.75rem; }
+.legend-section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
   display: inline-block;
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
+}
+.legend-section-title.vendor { background: #dbeafe; color: #1a56db; }
+.legend-section-title.distributor { background: #fef3c7; color: #b45309; }
+.legend-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #333;
+  padding: 0.1rem 0;
+  line-height: 1.4;
 }
 
-/* Graph panel */
+/* ── Node ID badge */
+.node-id {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  background: #e8f0fe;
+  color: #1a56db;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.node-id.distributor, .legend-row .node-id.distributor { background: #fef3c7; color: #b45309; }
+.node-id.vendor { background: #dbeafe; color: #1a56db; }
+
+/* ── Graph panel */
 #graph-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
-
 #graph-controls {
   display: flex;
   align-items: center;
@@ -42,7 +94,6 @@
   border-bottom: 1px solid #e0e0e0;
 }
 .control-label { font-size: 0.85rem; color: #555; white-space: nowrap; }
-
 #graph-legend {
   display: flex;
   gap: 1.25rem;
@@ -66,8 +117,8 @@
 #cy {
   flex: 1;
   background: #fafafa;
+  position: relative;
 }
-
 #graph-status {
   font-size: 0.8rem;
   color: #888;
@@ -76,3 +127,23 @@
   border-top: 1px solid #e0e0e0;
   text-align: right;
 }
+
+/* ── Hover Tooltip */
+#graph-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 999;
+  pointer-events: none;
+  background: #1a1a2e;
+  color: #fff;
+  border-radius: 7px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+  max-width: 220px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  line-height: 1.5;
+}
+.tt-header { font-weight: 700; font-size: 0.88rem; margin-bottom: 0.15rem; }
+.tt-type { font-size: 0.75rem; opacity: 0.7; text-transform: capitalize; }
+.tt-site { font-size: 0.75rem; opacity: 0.65; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-conn { font-size: 0.75rem; opacity: 0.8; margin-top: 0.3rem; }
