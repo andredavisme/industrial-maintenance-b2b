@@ -4,7 +4,6 @@ const categoryList = document.getElementById('category-list')
 const equipmentList = document.getElementById('equipment-list')
 const brandResults = document.getElementById('brand-results')
 
-// Load categories on page load
 async function loadCategories() {
   const { data, error } = await supabase
     .from('brand_categories')
@@ -53,15 +52,17 @@ async function loadBrands(equipmentSlug) {
 
   const { data, error } = await supabase
     .from('v_equipment_brands')
-    .select('equipment_type, equipment_slug, category, brands, brand_count')
+    .select('equipment_type, equipment_slug, category, brands, brand_slugs, brand_count')
     .eq('equipment_slug', equipmentSlug)
     .single()
 
   if (error || !data) { brandResults.textContent = 'No brands found.'; return }
 
-  const brandLinks = data.brands.map(b =>
-    `<a href="brand.html?slug=${b}" class="tag">${b}</a>`
-  ).join(' ')
+  // zip names + slugs together so links use slug, display uses name
+  const brandLinks = data.brands.map((name, i) => {
+    const slug = data.brand_slugs[i]
+    return `<a href="brand.html?slug=${slug}" class="tag">${name}</a>`
+  }).join(' ')
 
   brandResults.innerHTML = `
     <h2>${data.equipment_type} <span class="muted">(${data.brand_count} brands)</span></h2>
