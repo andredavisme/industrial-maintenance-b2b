@@ -1,7 +1,12 @@
 import { supabase } from './supabase.js'
 
 const main = document.getElementById('brand-detail')
-const slug = new URLSearchParams(location.search).get('slug')
+const rawSlug = new URLSearchParams(location.search).get('slug')
+
+// Normalise: if someone passed a display name instead of a slug, convert it
+const slug = rawSlug
+  ? rawSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  : null
 
 if (!slug) {
   main.innerHTML = '<p>No brand specified.</p>'
@@ -16,7 +21,7 @@ async function loadBrand(slug) {
     .eq('slug', slug)
     .single()
 
-  if (error || !brand) { main.innerHTML = '<p>Brand not found.</p>'; return }
+  if (error || !brand) { main.innerHTML = `<p>Brand not found for slug: <code>${slug}</code></p>`; return }
 
   const { data: distributors } = await supabase
     .from('user_brand_links')
@@ -29,7 +34,7 @@ async function loadBrand(slug) {
   ).join(' ')
 
   main.innerHTML = `
-    <a href="javascript:history.back()" class="back-link">← Back</a>
+    <a href="javascript:history.back()" class="back-link">&larr; Back</a>
     <h1>${brand.name}</h1>
     ${brand.website ? `<p><a href="${brand.website}" target="_blank">${brand.website}</a></p>` : ''}
     ${brand.category ? `<p class="muted">Category: ${brand.category}</p>` : ''}
