@@ -10,9 +10,7 @@ const tooltip = document.getElementById('graph-tooltip')
 
 let cy = null
 let allEdges = []
-let nodeIndex = {}  // id -> { shortId, label, type, slug, website }
 
-// ── Load & render
 async function init() {
   statusEl.textContent = 'Loading network data...'
 
@@ -31,7 +29,6 @@ async function init() {
   renderGraph(edges)
 }
 
-// ── Assign short IDs: V1…Vn, D1…Dn
 function assignNodeIds(edges) {
   const map = new Map()
   let vCount = 1, dCount = 1
@@ -61,44 +58,28 @@ function assignNodeIds(edges) {
   return map
 }
 
-// ── Build Cytoscape elements
 function buildElements(edges, nodeMap) {
   const nodes = [...nodeMap.values()].map(n => ({
-    data: {
-      id: n.id,
-      label: n.shortId,
-      fullLabel: n.label,
-      type: n.type,
-      slug: n.slug,
-      website: n.website
-    }
+    data: { id: n.id, label: n.shortId, fullLabel: n.label, type: n.type, slug: n.slug, website: n.website }
   }))
-
   const edgeEls = edges.map((e, i) => ({
     data: {
-      id: `e${i}`,
-      source: e.supplier_id,
-      target: e.buyer_id,
+      id: `e${i}`, source: e.supplier_id, target: e.buyer_id,
       shared_brands: e.shared_brands || [],
       shared_categories: e.shared_categories || [],
       link_type: e.link_type
     }
   }))
-
   return [...nodes, ...edgeEls]
 }
 
-// ── Render / re-render graph
 function renderGraph(edges) {
   if (cy) cy.destroy()
   hideTooltip()
 
   const nodeMap = assignNodeIds(edges)
-  nodeIndex = Object.fromEntries(nodeMap)
-
   const elements = buildElements(edges, nodeMap)
   const nodeCount = [...nodeMap.values()].length
-  const edgeCount = edges.length
 
   cy = cytoscape({
     container: cyContainer,
@@ -108,109 +89,53 @@ function renderGraph(edges) {
         selector: 'node',
         style: {
           'label': 'data(label)',
-          'font-size': '10px',
-          'font-weight': '600',
-          'text-valign': 'center',
-          'text-halign': 'center',
-          'color': '#fff',
-          'text-outline-width': '0',
-          'width': '32px',
-          'height': '32px',
-          'border-width': '2px',
-          'border-color': '#fff',
+          'font-size': '10px', 'font-weight': '600',
+          'text-valign': 'center', 'text-halign': 'center',
+          'color': '#fff', 'text-outline-width': '0',
+          'width': '32px', 'height': '32px',
+          'border-width': '2px', 'border-color': '#fff',
           'background-color': '#1a56db'
         }
       },
-      {
-        selector: 'node[type = "distributor"]',
-        style: { 'background-color': '#d97706' }
-      },
-      {
-        selector: 'node:selected',
-        style: {
-          'border-color': '#1a1a2e',
-          'border-width': '3px',
-          'width': '40px',
-          'height': '40px'
-        }
-      },
-      {
-        selector: 'edge',
-        style: {
-          'width': 1.5,
-          'line-color': '#ccc',
-          'target-arrow-color': '#aaa',
-          'target-arrow-shape': 'triangle',
-          'curve-style': 'bezier',
-          'opacity': 0.7
-        }
-      },
-      {
-        selector: 'edge:selected',
-        style: { 'line-color': '#1a56db', 'target-arrow-color': '#1a56db', 'opacity': 1, 'width': 2.5 }
-      },
-      {
-        selector: '.faded',
-        style: { 'opacity': 0.12 }
-      }
+      { selector: 'node[type = "distributor"]', style: { 'background-color': '#d97706' } },
+      { selector: 'node:selected', style: { 'border-color': '#1a1a2e', 'border-width': '3px', 'width': '40px', 'height': '40px' } },
+      { selector: 'edge', style: { 'width': 1.5, 'line-color': '#ccc', 'target-arrow-color': '#aaa', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'opacity': 0.7 } },
+      { selector: 'edge:selected', style: { 'line-color': '#1a56db', 'target-arrow-color': '#1a56db', 'opacity': 1, 'width': 2.5 } },
+      { selector: '.faded', style: { 'opacity': 0.12 } }
     ],
-    layout: {
-      name: 'cose',
-      animate: false,
-      nodeRepulsion: 10000,
-      idealEdgeLength: 140,
-      gravity: 0.4,
-      numIter: 1000,
-      padding: 40
-    }
+    layout: { name: 'cose', animate: false, nodeRepulsion: 10000, idealEdgeLength: 140, gravity: 0.4, numIter: 1000, padding: 40 }
   })
 
-  // Events
   cy.on('tap', 'node', e => { hideTooltip(); showNodeDetail(e.target) })
   cy.on('tap', 'edge', e => { hideTooltip(); showEdgeDetail(e.target) })
   cy.on('tap', evt => { if (evt.target === cy) { clearSidebar(); hideTooltip() } })
 
-  // Hover tooltip
   cy.on('mouseover', 'node', e => showTooltip(e.target, e.originalEvent))
-  cy.on('mouseout', 'node', () => hideTooltip())
+  cy.on('mouseout',  'node', () => hideTooltip())
   cy.on('mousemove', 'node', e => moveTooltip(e.originalEvent))
 
   buildLegend(nodeMap)
-  statusEl.textContent = `${nodeCount} companies · ${edgeCount} supply chain links`
+  statusEl.textContent = `${nodeCount} companies · ${edges.length} supply chain links`
 }
 
-// ── Tooltip
+// ── Tooltip — position: fixed, uses raw clientX/Y
 function showTooltip(node, evt) {
-  const { label, fullLabel, type, website } = node.data()
-  const neighbors = node.neighborhood('node').map(n => `${n.data('label')} ${n.data('fullLabel')}`).join(', ')
-
-  tooltip.innerHTML = `
-    <div class="tt-header"><strong>${label}</strong> — ${fullLabel}</div>
-    <div class="tt-type">${type}</div>
-    ${website ? `<div class="tt-site">${website}</div>` : ''}
-    ${neighbors ? `<div class="tt-conn">Connected: ${neighbors}</div>` : ''}
-  `
+  tooltip.textContent = node.data('fullLabel')
   tooltip.style.display = 'block'
   moveTooltip(evt)
 }
 
 function moveTooltip(evt) {
   const offset = 14
-  const panel = cyContainer.getBoundingClientRect()
-  let x = evt.clientX - panel.left + offset
-  let y = evt.clientY - panel.top + offset
-  // Keep within panel
-  if (x + 220 > panel.width) x -= 240
-  if (y + 100 > panel.height) y -= 110
-  tooltip.style.left = x + 'px'
-  tooltip.style.top = y + 'px'
+  tooltip.style.left = (evt.clientX + offset) + 'px'
+  tooltip.style.top  = (evt.clientY + offset) + 'px'
 }
 
 function hideTooltip() {
   tooltip.style.display = 'none'
 }
 
-// ── Sidebar: node detail
+// ── Sidebar: node
 function showNodeDetail(node) {
   const { label, fullLabel, type, slug, website } = node.data()
   const neighbors = node.neighborhood('node')
@@ -224,12 +149,11 @@ function showNodeDetail(node) {
     <ul>${neighbors.map(n => `<li><span class="node-id">${n.data('label')}</span> ${n.data('fullLabel')}</li>`).join('') || '<li><em>None</em></li>'}</ul>
     <a href="${pageUrl}" class="btn-primary sidebar-link">View Profile →</a>
   `
-
   cy.elements().addClass('faded')
   node.neighborhood().union(node).removeClass('faded')
 }
 
-// ── Sidebar: edge detail
+// ── Sidebar: edge
 function showEdgeDetail(edge) {
   const { shared_brands, shared_categories, link_type } = edge.data()
   const src = edge.source().data()
@@ -242,7 +166,6 @@ function showEdgeDetail(edge) {
     ${shared_categories?.length ? `<p class="muted" style="margin-top:0.5rem">Categories: ${shared_categories.join(', ')}</p>` : ''}
     ${shared_brands?.length ? `<p class="muted">Brands: ${shared_brands.join(', ')}</p>` : ''}
   `
-
   cy.elements().addClass('faded')
   edge.union(edge.source()).union(edge.target()).removeClass('faded')
 }
@@ -272,11 +195,9 @@ function buildLegend(nodeMap) {
 // ── Category filters
 function buildCategoryFilters(edges) {
   const cats = [...new Set(edges.flatMap(e => e.shared_categories || []))].sort()
-
   categoryFilters.innerHTML = cats.map(cat =>
     `<button class="filter-btn" data-cat="${cat}">${cat}</button>`
   ).join('')
-
   categoryFilters.querySelectorAll('.filter-btn').forEach(btn =>
     btn.addEventListener('click', () => {
       const filtered = allEdges.filter(e => e.shared_categories?.includes(btn.dataset.cat))
