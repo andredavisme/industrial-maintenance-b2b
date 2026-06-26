@@ -17,6 +17,9 @@
     </div>
   </nav>
 
+  <!-- Tooltip lives at body level so Cytoscape can't clobber it -->
+  <div id="graph-tooltip"></div>
+
   <div id="network-layout">
     <aside id="graph-sidebar">
       <div id="sidebar-content">
@@ -38,9 +41,7 @@
         <span class="legend-dot vendor"></span> Vendor
         <span class="legend-dot distributor"></span> Distributor
       </div>
-      <div id="cy">
-        <div id="graph-tooltip"></div>
-      </div>
+      <div id="cy"></div>
       <div id="graph-status"></div>
     </div>
   </div>
