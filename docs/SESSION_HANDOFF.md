@@ -4,7 +4,7 @@
 > The `indB2B`.sessions table is the DB-side audit log — insert a row there too.
 
 ## Last Updated
-2026-06-25
+2026-06-26
 
 ## Project Scope
 **No frontend development focus.** All work limited to:
@@ -13,25 +13,40 @@
 - Backend / calculation architecture support
 
 ## Current State
-🟢 **Phase 1 — COMPLETE. User directory + supply chain seeding complete (session 23). Ready for v_supply_chain_graph view or auth wiring.**
+🟢 **Phase 1 — COMPLETE. v_supply_chain_graph view created (session 24). Ready for auth wiring or next Phase 2 task.**
 
 **Tables (19):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, supply_chain_links, user_brand_links, user_equipment_links, user_industry_links, users, zip_distances, zip_distance_queue
-**Views (5):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary, v_shipment_legs_costed
+**Views (6):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary, v_shipment_legs_costed, **v_supply_chain_graph** ✅
 **Edge Functions (1):** get-distance (Nominatim lazy-load cache)
 **RLS:** Enabled on all 19 tables ✅
 
 ### File Status
 | File | Status |
 |------|--------|
-| `schema/indB2B_schema.sql` | ✅ Synced (session 22 DDL committed) |
+| `schema/indB2B_schema.sql` | ⚠️ Needs sync (v_supply_chain_graph DDL not yet committed) |
 | `data/brands_seed.sql` | ✅ 101 brands / 13 categories / 5 industries / 5 aliases / 59 zip codes / 14 carriers |
 | `data/branch-shelf.csv` | ✅ Committed |
 | `data/Package-Shipping-Reference-Supplier-Zip-Codes-2.csv` | ✅ Committed |
-| `docs/SCHEMA.md` | ✅ Synced (5 new tables documented) |
+| `docs/SCHEMA.md` | ⚠️ Needs sync (v_supply_chain_graph not yet documented) |
 | `docs/DATA_CATALOG.md` | ✅ In sync |
 
 ### DB Counts
 101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / **101 users (78 vendor, 23 distributor)** / **101 user_brand_links** / **250 user_industry_links** / **606 user_equipment_links** / **47 supply_chain_links** / 0 zip_distances (populates on-demand via get-distance Edge Function)
+
+## v_supply_chain_graph (Session 24)
+
+One row per directed supply chain edge (`supply_chain_links`), enriched with full node context.
+
+### Columns
+| Column | Description |
+|--------|-------------|
+| `link_id`, `link_type`, `link_active` | Edge metadata |
+| `supplier_id/name/slug/type/website` | Upstream node (vendor) |
+| `buyer_id/name/slug/type/website` | Downstream node (distributor/end_user) |
+| `shared_brands[]` | Brands both parties carry |
+| `shared_categories[]` | Brand categories bridging the edge |
+| `shared_industries[]` | Industries both parties serve |
+| `shared_equipment_types[]` | Equipment types both parties cover |
 
 ## User / Supply Chain Architecture (Session 22)
 
@@ -75,6 +90,10 @@ ALTER TABLE "indB2B".users
 - `est_freight_cost_override` = manual override; takes precedence in all rollups
 - `v_shipment_legs_costed` = full costed view with auto distance lookup
 
+## Completed — 2026-06-26 (Session 24)
+- [x] Created `v_supply_chain_graph` view: directed edge per supply_chain_links row, enriched with supplier/buyer user details and aggregated arrays of shared_brands, shared_categories, shared_industries, shared_equipment_types
+- [x] Verified with sample query — returning correct vendor→distributor edges (e.g. Siemens→Santa Clara Systems, Gates→Zoro, SKF→TCI Supply)
+
 ## Completed — 2026-06-25 (Session 23)
 - [x] Seeded `users` table: 101 rows (78 vendor, 23 distributor) from brands data via slug match
 - [x] Auto-populated `user_brand_links` (101 rows) by slug match, role = authorized_dealer or distributor
@@ -100,7 +119,7 @@ ALTER TABLE "indB2B".users
 
 | Priority | Task |
 |----------|------|
-| ⬜ High | Create `v_supply_chain_graph` view for end-user-facing network traversal |
+| ⬜ High | Sync `schema/indB2B_schema.sql` and `docs/SCHEMA.md` with v_supply_chain_graph DDL |
 | ⬜ Medium | Add `user_id` FK to `shipping_nodes` and `supplier_zip_codes` |
 | ⬜ Medium | Monitor `zip_distance_queue` for failed geocodes; resolve manually |
 | ⬜ Low | Phase 2 auth wiring: add FK constraint `auth_user_id → auth.users(id)` + RLS write policies |
@@ -117,9 +136,9 @@ ALTER TABLE "indB2B".users
 
 | File | Purpose |
 |------|---------|
-| `schema/indB2B_schema.sql` | Full DDL — ✅ synced |
+| `schema/indB2B_schema.sql` | Full DDL — ⚠️ needs sync |
 | `data/brands_seed.sql` | Cumulative seed data — ✅ complete |
 | `data/branch-shelf.csv` | Physical warehouse shelf catalog — ✅ committed |
 | `data/Package-Shipping-Reference-Supplier-Zip-Codes-2.csv` | Supplier zip codes source reference — ✅ committed |
-| `docs/SCHEMA.md` | Human-readable schema reference — ✅ synced |
+| `docs/SCHEMA.md` | Human-readable schema reference — ⚠️ needs sync |
 | `docs/DATA_CATALOG.md` | Brand/category index with status — ✅ in sync |
