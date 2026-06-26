@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Supply Chain Network — IndB2B</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/network.css" />
 </head>
 <body>
   <nav id="nav">
@@ -16,12 +17,29 @@
     </div>
   </nav>
 
-  <main>
-    <h1>Supply Chain Network</h1>
-    <div id="graph-filters" class="filter-row"></div>
-    <div id="graph-container"></div>
-  </main>
+  <div id="network-layout">
+    <aside id="graph-sidebar">
+      <div id="sidebar-content">
+        <p class="muted">Click a node to see details.</p>
+      </div>
+    </aside>
 
+    <div id="graph-panel">
+      <div id="graph-controls">
+        <span class="control-label">Filter by category:</span>
+        <div id="category-filters" class="filter-row"></div>
+        <button id="reset-filter" class="filter-btn" style="margin-left:auto">Show All</button>
+      </div>
+      <div id="graph-legend">
+        <span class="legend-dot vendor"></span> Vendor
+        <span class="legend-dot distributor"></span> Distributor
+      </div>
+      <div id="cy"></div>
+      <div id="graph-status"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
   <script type="module" src="js/network.js"></script>
 </body>
 </html>
