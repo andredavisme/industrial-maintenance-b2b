@@ -4,44 +4,44 @@
 > The `indB2B`.sessions table is the DB-side audit log — insert a row there too.
 
 ## Last Updated
-2026-06-26 (session 27)
+2026-06-26 (session 29)
 
 ## Project Scope
-**Backend complete. Frontend development is the active focus.**
+**Frontend scaffolded and live on GitHub Pages. Graph viz is the active focus.**
 - Read-only public API surface is fully ready (anon key, no auth required)
 - All writes remain service-role only until Phase 2 auth is scoped
 
 ## Current State
-🟢 **Phase 1 COMPLETE — Backend ready for frontend development.**
+🟢 **Phase 1 COMPLETE — Frontend scaffolded and data flowing.**
 
 **Tables (19):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, supply_chain_links, user_brand_links, user_equipment_links, user_industry_links, users, zip_distances, zip_distance_queue
 **Views (6):** v_brands_full, v_equipment_brands, supplier_zip_codes (compat), v_shipment_cost_summary, v_shipment_legs_costed, v_supply_chain_graph
 **Edge Functions (1):** get-distance (Nominatim lazy-load cache)
-**RLS:** Enabled on all 19 tables ✅
+**RLS:** Enabled on all 19 tables ✅ — all policies now explicitly grant `anon` role
 
 ### File Status
 | File | Status |
 |------|--------|
 | `schema/indB2B_schema.sql` | ✅ Synced (sessions 1–26) |
 | `data/brands_seed.sql` | ✅ 101 brands / 13 categories / 5 industries / 5 aliases / 59 zip codes / 14 carriers |
-| `data/branch-shelf.csv` | ✅ Committed |
-| `data/Package-Shipping-Reference-Supplier-Zip-Codes-2.csv` | ✅ Committed |
 | `docs/SCHEMA.md` | ✅ Synced (sessions 1–26) |
 | `docs/DATA_CATALOG.md` | ✅ In sync |
 | `docs/FRONTEND_GUIDE.md` | ✅ Created (session 27) |
+| `docs/index.html` + all pages | ✅ Scaffolded (session 28) |
 
 ### DB Counts
-101 brands / 13 categories / 5 industries / 59 shipping nodes (supplier) / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / **101 users (78 vendor, 23 distributor)** / 101 user_brand_links / 250 user_industry_links / 606 user_equipment_links / **47 supply_chain_links** / 0 zip_distances (on-demand via Edge Function)
+101 brands / 13 categories / 5 industries / 59 shipping nodes / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 101 users (78 vendor, 23 distributor) / 101 user_brand_links / 250 user_industry_links / 606 user_equipment_links / 47 supply_chain_links / 0 zip_distances (on-demand via Edge Function)
 
 ## Frontend Build — Next Steps (Active)
 
-| Priority | Task | Doc Reference |
-|----------|------|---------------|
-| ⬜ 1 | Define URL/page structure (routes) | FRONTEND_GUIDE.md |
-| ⬜ 2 | Decide frontend framework | FRONTEND_GUIDE.md |
-| ⬜ 3 | Wire Supabase anon key + client | FRONTEND_GUIDE.md |
-| ⬜ 4 | Build Equipment → Brand → Distributor query chain | FRONTEND_GUIDE.md |
-| ⬜ 5 | Build supply chain graph visualization | FRONTEND_GUIDE.md |
+| Priority | Task | Status |
+|----------|------|--------|
+| ✅ | Scaffold GitHub Pages frontend (docs/) | Done session 28 |
+| ✅ | Fix RLS anon access (10 tables) | Done session 28 |
+| ⬜ 1 | Build supply chain graph visualization (Screen 4) | **Active** |
+| ⬜ 2 | Refine Equipment Search (Screen 1) | Functional, needs polish |
+| ⬜ 3 | Refine Brand + Distributor profiles (Screens 2 & 3) | Functional, needs polish |
+| ⬜ 4 | Find Near Me (Screen 5) | Wired, needs live test |
 
 ## Phase 2 Backlog (deferred)
 
@@ -52,15 +52,18 @@
 | ⬜ Low | RFQ functionality (scope TBD) |
 | ⬜ Low | Monitor `zip_distance_queue` for failed geocodes (currently empty) |
 
-## Open Questions
-- What frontend framework? (React, plain HTML/JS, other)
-- Is RFQ functionality in scope for Phase 2?
-
 ## Architecture Quick Reference
 
 ### Public Read API (anon key, no auth)
 All reads go through Supabase REST or JS client using the anon publishable key.
 See `docs/FRONTEND_GUIDE.md` for query patterns per screen.
+
+### Frontend Stack
+- Vanilla HTML + JS ES modules (no build step)
+- GitHub Pages serving from `docs/` folder
+- Supabase JS v2 via esm.sh CDN
+- Publishable key: `sb_publishable_Lc7rXKQ-1TJaQFu7a-nOVQ_5Sf3x__M`
+- Project URL: `https://nmemmfblpzrkwyljpmvp.supabase.co`
 
 ### Actor Types (users table)
 - `vendor` — brand manufacturer/rep; supplies distributors
@@ -76,24 +79,19 @@ See `docs/FRONTEND_GUIDE.md` for query patterns per screen.
 - `supply_chain_links` — raw edges (supplier_id → buyer_id)
 - `v_supply_chain_graph` — enriched view with node details + shared brand/industry/equipment arrays
 
-### Shipping Cost
-- `v_shipment_legs_costed` — per-leg effective miles + cost (override → generated → lookup)
-- `v_shipment_cost_summary` — rollup per shipment
-
-## Completed — 2026-06-26 (Sessions 24–27)
+## Completed — 2026-06-26 (Sessions 24–29)
 - [x] Created `v_supply_chain_graph` view (session 24)
-- [x] Synced schema/indB2B_schema.sql + docs/SCHEMA.md with v_supply_chain_graph (session 25)
-- [x] Added `user_id` FK (nullable) to `shipping_nodes`; refreshed `supplier_zip_codes` view (session 26)
-- [x] zip_distance_queue confirmed empty — no failures (session 27)
-- [x] Created docs/FRONTEND_GUIDE.md with full public API surface map (session 27)
-- [x] Updated SESSION_HANDOFF.md to reflect frontend-active phase (session 27)
+- [x] Synced schema/indB2B_schema.sql + docs/SCHEMA.md (session 25)
+- [x] Added `user_id` FK to `shipping_nodes` (session 26)
+- [x] Created docs/FRONTEND_GUIDE.md (session 27)
+- [x] Scaffolded full GitHub Pages frontend — 6 HTML, 7 JS, 1 CSS (session 28)
+- [x] Fixed RLS: 10 tables updated from {public} → {anon, authenticated} (session 28)
 
 ## Completed — 2026-06-25 (Sessions 1–23)
 - [x] Full schema, all seed data, brand/category/industry/equipment/links, shipping architecture, views, RLS
 - [x] 101 users seeded (78 vendor, 23 distributor) with full link table population
 - [x] 47 supply_chain_links seeded across 6 categories
 - [x] get-distance Edge Function deployed
-- [x] zip_distances lazy-load cache architecture
 
 ## AppSheet Reference
 [AppSheet app](https://www.appsheet.com/start/226daf34-cd2d-4d03-b9cd-9b0dd7ea3fe8) — reference library for supplier zip codes only.
@@ -105,6 +103,8 @@ See `docs/FRONTEND_GUIDE.md` for query patterns per screen.
 | `schema/indB2B_schema.sql` | Full DDL — ✅ synced |
 | `data/brands_seed.sql` | Cumulative seed data — ✅ complete |
 | `docs/SCHEMA.md` | Human-readable schema reference — ✅ synced |
-| `docs/FRONTEND_GUIDE.md` | Public API surface + screen query map — ✅ new |
-| `docs/DATA_CATALOG.md` | Brand/category index — ✅ in sync |
-| `docs/DEV_GUIDE.md` | Setup instructions |
+| `docs/FRONTEND_GUIDE.md` | Public API surface + screen query map |
+| `docs/DATA_CATALOG.md` | Brand/category index |
+| `docs/index.html` | Home page |
+| `docs/js/supabase.js` | Supabase client config |
+| `docs/js/network.js` | Graph viz (placeholder → active build) |
