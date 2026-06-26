@@ -1,6 +1,6 @@
 # indB2B Schema Reference
 
-> Last updated: 2026-06-26 (sessions 1–24)
+> Last updated: 2026-06-26 (sessions 1–26)
 
 ## Tables (19)
 
@@ -86,13 +86,14 @@
 | updated_at | timestamptz | auto-trigger |
 
 ### shipping_nodes
-Generalized location node. `supplier_zip_codes` is a compatibility view.
+Generalized location node. `supplier_zip_codes` is a compatibility view. `user_id` added session 26.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
 | node_type | text NOT NULL | supplier / warehouse / distributor / customer |
 | brand_id | uuid FK → brands | ON DELETE SET NULL |
+| user_id | uuid FK → users | ON DELETE SET NULL; nullable; added session 26 |
 | name | text NOT NULL | |
 | zip_code | varchar(10) NOT NULL | |
 | city | varchar(100) | |
@@ -111,8 +112,7 @@ Generalized location node. `supplier_zip_codes` is a compatibility view.
 | website | text | |
 | is_active | boolean NOT NULL | Default true |
 | notes | text | |
-| created_at | timestamptz | |
-| updated_at | timestamptz | auto-trigger |
+| created_at | timestamptz | auto-trigger |
 
 ### shipments
 | Column | Type | Notes |
@@ -176,7 +176,7 @@ Backlog for zip pairs that could not be auto-resolved by the Edge Function.
 | UNIQUE | (zip_from, zip_to) | |
 
 ### users _(added session 22)_
-Public company directory. `auth_user_id` nullable for Phase 2 Supabase Auth wiring (non-breaking FK added later).
+Public company directory. `auth_user_id` nullable for Phase 2 Supabase Auth wiring.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -187,7 +187,7 @@ Public company directory. `auth_user_id` nullable for Phase 2 Supabase Auth wiri
 | website | text | |
 | email | text | |
 | auth_user_id | uuid UNIQUE | NULL until Phase 2 auth; FK to auth.users added then |
-| is_public | boolean | Default true; controls public visibility |
+| is_public | boolean | Default true |
 | is_active | boolean | Default true |
 | created_at | timestamptz | |
 | updated_at | timestamptz | auto-trigger |
@@ -212,7 +212,7 @@ Public company directory. `auth_user_id` nullable for Phase 2 Supabase Auth wiri
 | equipment_type_id | uuid FK → equipment_types | ON DELETE CASCADE |
 
 ### supply_chain_links _(added session 22)_
-Graph edge table representing who supplies whom. Self-loop prevented by CHECK.
+Graph edge table representing who supplies whom.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -229,28 +229,18 @@ Graph edge table representing who supplies whom. Self-loop prevented by CHECK.
 ## Edge Functions (1)
 
 ### get-distance
-Lazy-load distance lookup. No API key required.
-
 **Request:** `POST /functions/v1/get-distance`
 ```json
 { "zip_from": "04090", "zip_to": "03909" }
 ```
-
-**Logic:**
-1. Check `zip_distances` cache (bidirectional)
-2. Geocode both zips via Nominatim (OpenStreetMap, free)
-3. Compute haversine straight-line miles × 1.3 road factor
-4. Insert result into `zip_distances` with `source = 'nominatim'`
-5. On geocode failure → insert into `zip_distance_queue` with `status = 'pending'`
-
-**Responses:**
-- `200 { miles, source, cached: true/false }` — success
-- `202 { error, queued: true }` — geocode failed, queued for manual review
+**Logic:** Check cache → Nominatim geocode → haversine × 1.3 → insert; on failure → queue.
+- `200 { miles, source, cached }` — success
+- `202 { error, queued: true }` — geocode failed
 
 ## Views (6)
 
 ### supplier_zip_codes
-Compatibility view over `shipping_nodes WHERE node_type = 'supplier'`.
+Compat view over `shipping_nodes WHERE node_type = 'supplier'`. Now exposes `user_id` (session 26).
 
 ### v_brands_full
 One row per brand with aggregated aliases, industries, and equipment types.
@@ -262,24 +252,10 @@ One row per equipment type with aggregated brand list and count.
 Estimated freight cost rollup per shipment.
 
 ### v_shipment_legs_costed
-Per-leg costed view. Priority chains:
-- `effective_miles`: `est_miles` → `zip_distances` lookup (bidirectional)
-- `effective_freight_cost`: override → generated → on-the-fly with looked-up miles
+Per-leg costed view with auto distance lookup and effective cost chain.
 
 ### v_supply_chain_graph _(added session 24)_
-One row per directed supply chain edge. Enriches each `supply_chain_links` row with full supplier and buyer node details plus four aggregated context arrays.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| link_id | uuid | supply_chain_links.id |
-| link_type | text | vendor_to_distributor, etc. |
-| link_active | boolean | |
-| supplier_id / name / slug / type / website | — | Upstream node fields |
-| buyer_id / name / slug / type / website | — | Downstream node fields |
-| shared_brands | text[] | Brands both parties carry |
-| shared_categories | text[] | Brand categories bridging the edge |
-| shared_industries | text[] | Industries both serve |
-| shared_equipment_types | text[] | Equipment types both cover |
+One row per directed supply chain edge with enriched supplier/buyer node details and aggregated shared_brands, shared_categories, shared_industries, shared_equipment_types arrays.
 
 ## RLS Summary
 | Table | Policy |
@@ -292,7 +268,6 @@ One row per directed supply chain edge. Enriches each `supply_chain_links` row w
 | sessions | No public policy — service_role only |
 
 ## Phase 2 Auth Wiring (non-breaking)
-When Supabase Auth is enabled, add this single constraint — no other changes needed:
 ```sql
 ALTER TABLE "indB2B".users
   ADD CONSTRAINT users_auth_user_id_fkey

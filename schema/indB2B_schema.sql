@@ -2,7 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
--- Last synced: 2026-06-26 (sessions 1–24)
+-- Last synced: 2026-06-26 (sessions 1–26)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS "indB2B".shipping_nodes (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   node_type    text NOT NULL CHECK (node_type IN ('supplier','warehouse','distributor','customer')),
   brand_id     uuid REFERENCES "indB2B".brands(id) ON DELETE SET NULL,
+  user_id      uuid REFERENCES "indB2B".users(id) ON DELETE SET NULL,  -- added session 26
   name         text NOT NULL,
   zip_code     varchar(10) NOT NULL,
   city         varchar(100),
@@ -145,6 +146,7 @@ CREATE TABLE IF NOT EXISTS "indB2B".shipping_nodes (
 CREATE INDEX IF NOT EXISTS idx_shipping_nodes_node_type ON "indB2B".shipping_nodes(node_type);
 CREATE INDEX IF NOT EXISTS idx_shipping_nodes_brand_id  ON "indB2B".shipping_nodes(brand_id);
 CREATE INDEX IF NOT EXISTS idx_shipping_nodes_zip_code  ON "indB2B".shipping_nodes(zip_code);
+CREATE INDEX IF NOT EXISTS idx_shipping_nodes_user_id   ON "indB2B".shipping_nodes(user_id);
 
 CREATE TRIGGER set_updated_at_shipping_nodes
   BEFORE UPDATE ON "indB2B".shipping_nodes
@@ -262,7 +264,6 @@ CREATE TRIGGER set_updated_at_zip_distance_queue
   FOR EACH ROW EXECUTE FUNCTION "indB2B".set_updated_at();
 
 -- ---- users (session 22) -----------------------------------------
--- Public company directory. auth_user_id nullable for Phase 2 Supabase Auth wiring.
 CREATE TABLE IF NOT EXISTS "indB2B".users (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name         text NOT NULL,
@@ -307,7 +308,6 @@ CREATE TABLE IF NOT EXISTS "indB2B".user_equipment_links (
 );
 
 -- ---- supply_chain_links (session 22) ----------------------------
--- Graph edge table: who supplies whom, with enforced link_type.
 CREATE TABLE IF NOT EXISTS "indB2B".supply_chain_links (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   supplier_id uuid REFERENCES "indB2B".users(id) ON DELETE CASCADE,
@@ -339,8 +339,9 @@ CREATE INDEX IF NOT EXISTS idx_supply_chain_links_type     ON "indB2B".supply_ch
 -- VIEWS
 -- ============================================================
 
+-- supplier_zip_codes: compat view; exposes user_id after session 26
 CREATE OR REPLACE VIEW "indB2B".supplier_zip_codes AS
-SELECT id, brand_id, zip_code, city, state_code, is_primary, notes, created_at, updated_at
+SELECT id, brand_id, user_id, zip_code, city, state_code, is_primary, notes, created_at, updated_at
 FROM "indB2B".shipping_nodes
 WHERE node_type = 'supplier';
 
@@ -433,63 +434,41 @@ LEFT JOIN "indB2B".zip_distances zd_rev
   ON zd_rev.zip_from = LEFT(tn.zip_code, 5) AND zd_rev.zip_to = LEFT(fn.zip_code, 5);
 
 -- ---- v_supply_chain_graph (session 24) --------------------------
--- One row per directed supply chain edge, enriched with both node details
--- and aggregated arrays of shared brands, categories, industries, equipment types.
 CREATE OR REPLACE VIEW "indB2B".v_supply_chain_graph AS
 SELECT
-  -- Edge identity
   scl.id                          AS link_id,
   scl.link_type,
   scl.is_active                   AS link_active,
-
-  -- Supplier (upstream) node
   sup.id                          AS supplier_id,
   sup.name                        AS supplier_name,
   sup.slug                        AS supplier_slug,
   sup.actor_type                  AS supplier_type,
   sup.website                     AS supplier_website,
-
-  -- Buyer (downstream) node
   buy.id                          AS buyer_id,
   buy.name                        AS buyer_name,
   buy.slug                        AS buyer_slug,
   buy.actor_type                  AS buyer_type,
   buy.website                     AS buyer_website,
-
-  -- Shared brand(s) — aggregated
   array_agg(DISTINCT b.name ORDER BY b.name)   AS shared_brands,
   array_agg(DISTINCT bc.name ORDER BY bc.name) AS shared_categories,
-
-  -- Shared industries — aggregated
   array_agg(DISTINCT ind.name ORDER BY ind.name) AS shared_industries,
-
-  -- Shared equipment types — aggregated
   array_agg(DISTINCT et.name ORDER BY et.name)   AS shared_equipment_types
-
 FROM "indB2B".supply_chain_links scl
 JOIN "indB2B".users sup ON sup.id = scl.supplier_id
 JOIN "indB2B".users buy ON buy.id = scl.buyer_id
-
 LEFT JOIN "indB2B".user_brand_links ubl_sup ON ubl_sup.user_id = scl.supplier_id
 LEFT JOIN "indB2B".user_brand_links ubl_buy
-  ON ubl_buy.user_id = scl.buyer_id
-  AND ubl_buy.brand_id = ubl_sup.brand_id
-
+  ON ubl_buy.user_id = scl.buyer_id AND ubl_buy.brand_id = ubl_sup.brand_id
 LEFT JOIN "indB2B".brands b ON b.id = ubl_sup.brand_id
 LEFT JOIN "indB2B".brand_categories bc ON bc.id = b.category_id
-
 LEFT JOIN "indB2B".user_industry_links uil_sup ON uil_sup.user_id = scl.supplier_id
 LEFT JOIN "indB2B".user_industry_links uil_buy
-  ON uil_buy.user_id = scl.buyer_id
-  AND uil_buy.industry_id = uil_sup.industry_id
+  ON uil_buy.user_id = scl.buyer_id AND uil_buy.industry_id = uil_sup.industry_id
 LEFT JOIN "indB2B".industries ind ON ind.id = uil_sup.industry_id
-
 LEFT JOIN "indB2B".user_equipment_links uel_sup ON uel_sup.user_id = scl.supplier_id
 LEFT JOIN "indB2B".user_equipment_links uel_buy
-  ON uel_buy.user_id = scl.buyer_id
-  AND uel_buy.equipment_type_id = uel_sup.equipment_type_id
+  ON uel_buy.user_id = scl.buyer_id AND uel_buy.equipment_type_id = uel_sup.equipment_type_id
 LEFT JOIN "indB2B".equipment_types et ON et.id = uel_sup.equipment_type_id
-
 GROUP BY
   scl.id, scl.link_type, scl.is_active,
   sup.id, sup.name, sup.slug, sup.actor_type, sup.website,
