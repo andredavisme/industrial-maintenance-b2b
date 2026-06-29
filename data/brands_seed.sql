@@ -1,6 +1,6 @@
 -- ============================================================
 -- indB2B Cumulative Brand Seed Data
--- Last updated: 2026-06-25 (101 brands, 13 categories, 5 industries, 5 aliases, 59 supplier zip codes)
+-- Last updated: 2026-06-29 (101 brands, 13 categories, 5 industries, 5 aliases, 59 supplier zip codes, 215 user_brand_links)
 -- Run after schema/indB2B_schema.sql
 -- ============================================================
 
@@ -240,3 +240,330 @@ INSERT INTO "indB2B".carriers (name, scac_code, website, is_active, notes) VALUE
   ('C.H. Robinson',             NULL,   'https://www.chrobinson.com',    true,  '3PL broker; non-asset, no SCAC'),
   ('Ross Express',              'ROSX', NULL,                            false, 'New England regional LTL; ceased operations late 1990s')
 ON CONFLICT DO NOTHING;
+
+-- ---- user_brand_links (215 rows — synced 2026-06-29) ------------
+-- Vendors (78): self-link as authorized_dealer
+-- Distributors (23): self-link + carried brands as distributor
+INSERT INTO "indB2B".user_brand_links (user_id, brand_id, role)
+SELECT u.id, b.id, v.role
+FROM (VALUES
+  -- a-stucki (vendor)
+  ('a-stucki','a-stucki','authorized_dealer'),
+  -- abb (vendor)
+  ('abb','abb','authorized_dealer'),
+  -- air-incorporated (distributor)
+  ('air-incorporated','air-incorporated','distributor'),
+  ('air-incorporated','fw-webb','distributor'),
+  ('air-incorporated','graco','distributor'),
+  ('air-incorporated','take-5','distributor'),
+  -- allen-bradley (vendor)
+  ('allen-bradley','allen-bradley','authorized_dealer'),
+  -- alpine (vendor)
+  ('alpine','alpine','authorized_dealer'),
+  -- ami-bearings (vendor)
+  ('ami-bearings','ami-bearings','authorized_dealer'),
+  -- ammega-megadyne-jason (vendor)
+  ('ammega-megadyne-jason','ammega-megadyne-jason','authorized_dealer'),
+  -- anfield (distributor)
+  ('anfield','a-stucki','distributor'),
+  ('anfield','ammega-megadyne-jason','distributor'),
+  ('anfield','anfield','distributor'),
+  ('anfield','gates','distributor'),
+  ('anfield','skf','distributor'),
+  -- apg (vendor)
+  ('apg','apg','authorized_dealer'),
+  -- baldor (vendor)
+  ('baldor','baldor','authorized_dealer'),
+  -- banner-engineering (vendor)
+  ('banner-engineering','banner-engineering','authorized_dealer'),
+  -- bobcat (vendor)
+  ('bobcat','bobcat','authorized_dealer'),
+  -- bodine (vendor)
+  ('bodine','bodine','authorized_dealer'),
+  -- browning (vendor)
+  ('browning','browning','authorized_dealer'),
+  -- bunting-bearings (vendor)
+  ('bunting-bearings','bunting-bearings','authorized_dealer'),
+  -- case (vendor)
+  ('case','case','authorized_dealer'),
+  -- caterpillar (vendor)
+  ('caterpillar','caterpillar','authorized_dealer'),
+  -- climax (vendor)
+  ('climax','climax','authorized_dealer'),
+  -- consolidated-bearings (distributor)
+  ('consolidated-bearings','ami-bearings','distributor'),
+  ('consolidated-bearings','bunting-bearings','distributor'),
+  ('consolidated-bearings','consolidated-bearings','distributor'),
+  ('consolidated-bearings','fag','distributor'),
+  ('consolidated-bearings','ina','distributor'),
+  ('consolidated-bearings','nsk','distributor'),
+  ('consolidated-bearings','ntn','distributor'),
+  ('consolidated-bearings','rbc','distributor'),
+  ('consolidated-bearings','schaeffler','distributor'),
+  ('consolidated-bearings','skf','distributor'),
+  ('consolidated-bearings','timken','distributor'),
+  -- contitech (vendor)
+  ('contitech','contitech','authorized_dealer'),
+  -- crc-industries (vendor)
+  ('crc-industries','crc-industries','authorized_dealer'),
+  -- dayco (vendor)
+  ('dayco','dayco','authorized_dealer'),
+  -- dodge-pt (vendor)
+  ('dodge-pt','dodge-pt','authorized_dealer'),
+  -- donaldson (vendor)
+  ('donaldson','donaldson','authorized_dealer'),
+  -- eaton (vendor)
+  ('eaton','eaton','authorized_dealer'),
+  -- emerson-rosemount (vendor)
+  ('emerson-rosemount','emerson-rosemount','authorized_dealer'),
+  -- endress-hauser (vendor)
+  ('endress-hauser','endress-hauser','authorized_dealer'),
+  -- fag (vendor)
+  ('fag','fag','authorized_dealer'),
+  -- fanuc (vendor)
+  ('fanuc','fanuc','authorized_dealer'),
+  -- fenner (vendor)
+  ('fenner','fenner','authorized_dealer'),
+  -- filtermart (distributor)
+  ('filtermart','donaldson','distributor'),
+  ('filtermart','filtermart','distributor'),
+  ('filtermart','shell-lubricants','distributor'),
+  ('filtermart','take-5','distributor'),
+  -- flodraulic-group (distributor)
+  ('flodraulic-group','flodraulic-group','distributor'),
+  ('flodraulic-group','gates','distributor'),
+  ('flodraulic-group','graco','distributor'),
+  ('flodraulic-group','hydraulic-technologies','distributor'),
+  ('flodraulic-group','power-brushes','distributor'),
+  -- fw-webb (distributor)
+  ('fw-webb','air-incorporated','distributor'),
+  ('fw-webb','filtermart','distributor'),
+  ('fw-webb','fw-webb','distributor'),
+  ('fw-webb','permatex','distributor'),
+  ('fw-webb','take-5','distributor'),
+  -- gates (vendor)
+  ('gates','gates','authorized_dealer'),
+  -- graco (vendor)
+  ('graco','graco','authorized_dealer'),
+  -- hamilton (vendor)
+  ('hamilton','hamilton','authorized_dealer'),
+  -- harwal (distributor)
+  ('harwal','filtermart','distributor'),
+  ('harwal','harwal','distributor'),
+  ('harwal','tci-supply','distributor'),
+  ('harwal','wd-40','distributor'),
+  ('harwal','zoro','distributor'),
+  -- hitachi (vendor)
+  ('hitachi','hitachi','authorized_dealer'),
+  -- hydraulic-technologies (distributor)
+  ('hydraulic-technologies','flodraulic-group','distributor'),
+  ('hydraulic-technologies','graco','distributor'),
+  ('hydraulic-technologies','hydraulic-technologies','distributor'),
+  ('hydraulic-technologies','phd-solution','distributor'),
+  -- ina (vendor)
+  ('ina','ina','authorized_dealer'),
+  -- jet (vendor)
+  ('jet','jet','authorized_dealer'),
+  -- john-deere (vendor)
+  ('john-deere','john-deere','authorized_dealer'),
+  -- keyence (vendor)
+  ('keyence','keyence','authorized_dealer'),
+  -- koehler (vendor)
+  ('koehler','koehler','authorized_dealer'),
+  -- kolberg (vendor)
+  ('kolberg','kolberg','authorized_dealer'),
+  -- komatsu (vendor)
+  ('komatsu','komatsu','authorized_dealer'),
+  -- kuka (vendor)
+  ('kuka','kuka','authorized_dealer'),
+  -- leeson (vendor)
+  ('leeson','leeson','authorized_dealer'),
+  -- lenze (vendor)
+  ('lenze','lenze','authorized_dealer'),
+  -- magnaloy (vendor)
+  ('magnaloy','magnaloy','authorized_dealer'),
+  -- martin (vendor)
+  ('martin','martin','authorized_dealer'),
+  -- martin-vibration-systems (vendor)
+  ('martin-vibration-systems','martin-vibration-systems','authorized_dealer'),
+  -- mesco-corporation (distributor)
+  ('mesco-corporation','crc-industries','distributor'),
+  ('mesco-corporation','donaldson','distributor'),
+  ('mesco-corporation','mesco-corporation','distributor'),
+  ('mesco-corporation','mobil','distributor'),
+  ('mesco-corporation','permatex','distributor'),
+  ('mesco-corporation','shell-lubricants','distributor'),
+  ('mesco-corporation','wd-40','distributor'),
+  -- metso (vendor)
+  ('metso','metso','authorized_dealer'),
+  -- mj-dunn (distributor)
+  ('mj-dunn','crc-industries','distributor'),
+  ('mj-dunn','mj-dunn','distributor'),
+  ('mj-dunn','mobil','distributor'),
+  ('mj-dunn','permatex','distributor'),
+  ('mj-dunn','shell-lubricants','distributor'),
+  ('mj-dunn','wd-40','distributor'),
+  -- mobil (vendor)
+  ('mobil','mobil','authorized_dealer'),
+  -- newark (distributor)
+  ('newark','abb','distributor'),
+  ('newark','allen-bradley','distributor'),
+  ('newark','apg','distributor'),
+  ('newark','banner-engineering','distributor'),
+  ('newark','eaton','distributor'),
+  ('newark','newark','distributor'),
+  ('newark','omron','distributor'),
+  ('newark','schneider-electric','distributor'),
+  -- nidec (vendor)
+  ('nidec','nidec','authorized_dealer'),
+  -- nsk (vendor)
+  ('nsk','nsk','authorized_dealer'),
+  -- ntn (vendor)
+  ('ntn','ntn','authorized_dealer'),
+  -- off-road (vendor)
+  ('off-road','off-road','authorized_dealer'),
+  -- omron (vendor)
+  ('omron','omron','authorized_dealer'),
+  -- pacific-international-bearing (distributor)
+  ('pacific-international-bearing','ami-bearings','distributor'),
+  ('pacific-international-bearing','browning','distributor'),
+  ('pacific-international-bearing','bunting-bearings','distributor'),
+  ('pacific-international-bearing','dodge-pt','distributor'),
+  ('pacific-international-bearing','gates','distributor'),
+  ('pacific-international-bearing','nsk','distributor'),
+  ('pacific-international-bearing','pacific-international-bearing','distributor'),
+  ('pacific-international-bearing','skf','distributor'),
+  ('pacific-international-bearing','timken','distributor'),
+  -- palmer-johnson-power-systems (distributor)
+  ('palmer-johnson-power-systems','ammega-megadyne-jason','distributor'),
+  ('palmer-johnson-power-systems','browning','distributor'),
+  ('palmer-johnson-power-systems','dayco','distributor'),
+  ('palmer-johnson-power-systems','dodge-pt','distributor'),
+  ('palmer-johnson-power-systems','gates','distributor'),
+  ('palmer-johnson-power-systems','magnaloy','distributor'),
+  ('palmer-johnson-power-systems','palmer-johnson-power-systems','distributor'),
+  ('palmer-johnson-power-systems','tsubaki','distributor'),
+  -- peer-chain (vendor)
+  ('peer-chain','peer-chain','authorized_dealer'),
+  -- pems (distributor)
+  ('pems','baldor','distributor'),
+  ('pems','bodine','distributor'),
+  ('pems','leeson','distributor'),
+  ('pems','lenze','distributor'),
+  ('pems','pems','distributor'),
+  ('pems','regal-beloit','distributor'),
+  ('pems','toshiba','distributor'),
+  ('pems','weg','distributor'),
+  -- permatex (vendor)
+  ('permatex','permatex','authorized_dealer'),
+  -- phd-solution (vendor)
+  ('phd-solution','phd-solution','authorized_dealer'),
+  -- power-brushes (vendor)
+  ('power-brushes','power-brushes','authorized_dealer'),
+  -- ras (distributor)
+  ('ras','mobil','distributor'),
+  ('ras','ras','distributor'),
+  ('ras','shell-lubricants','distributor'),
+  ('ras','wd-40','distributor'),
+  -- rbc (vendor)
+  ('rbc','rbc','authorized_dealer'),
+  -- regal-beloit (vendor)
+  ('regal-beloit','regal-beloit','authorized_dealer'),
+  -- royal-bearing (distributor)
+  ('royal-bearing','ami-bearings','distributor'),
+  ('royal-bearing','fag','distributor'),
+  ('royal-bearing','nsk','distributor'),
+  ('royal-bearing','ntn','distributor'),
+  ('royal-bearing','royal-bearing','distributor'),
+  ('royal-bearing','skf','distributor'),
+  ('royal-bearing','timken','distributor'),
+  -- rs (distributor)
+  ('rs','abb','distributor'),
+  ('rs','banner-engineering','distributor'),
+  ('rs','emerson-rosemount','distributor'),
+  ('rs','endress-hauser','distributor'),
+  ('rs','keyence','distributor'),
+  ('rs','rs','distributor'),
+  -- sae (vendor)
+  ('sae','sae','authorized_dealer'),
+  -- santa-clara-systems (distributor)
+  ('santa-clara-systems','allen-bradley','distributor'),
+  ('santa-clara-systems','banner-engineering','distributor'),
+  ('santa-clara-systems','omron','distributor'),
+  ('santa-clara-systems','santa-clara-systems','distributor'),
+  ('santa-clara-systems','schneider-electric','distributor'),
+  -- schaeffler (vendor)
+  ('schaeffler','schaeffler','authorized_dealer'),
+  -- schneider-electric (vendor)
+  ('schneider-electric','schneider-electric','authorized_dealer'),
+  -- shell-lubricants (vendor)
+  ('shell-lubricants','shell-lubricants','authorized_dealer'),
+  -- siemens (vendor)
+  ('siemens','siemens','authorized_dealer'),
+  -- simatec (vendor)
+  ('simatec','simatec','authorized_dealer'),
+  -- skf (vendor)
+  ('skf','skf','authorized_dealer'),
+  -- solve (distributor)
+  ('solve','crc-industries','distributor'),
+  ('solve','donaldson','distributor'),
+  ('solve','mobil','distributor'),
+  ('solve','solve','distributor'),
+  ('solve','wd-40','distributor'),
+  -- star-automation (vendor)
+  ('star-automation','star-automation','authorized_dealer'),
+  -- superior-industries (distributor)
+  ('superior-industries','a-stucki','distributor'),
+  ('superior-industries','anfield','distributor'),
+  ('superior-industries','gates','distributor'),
+  ('superior-industries','mesco-corporation','distributor'),
+  ('superior-industries','superior-industries','distributor'),
+  -- swan-analytical (vendor)
+  ('swan-analytical','swan-analytical','authorized_dealer'),
+  -- take-5 (distributor)
+  ('take-5','air-incorporated','distributor'),
+  ('take-5','donaldson','distributor'),
+  ('take-5','take-5','distributor'),
+  -- takeuchi (vendor)
+  ('takeuchi','takeuchi','authorized_dealer'),
+  -- tci-supply (distributor)
+  ('tci-supply','filtermart','distributor'),
+  ('tci-supply','harwal','distributor'),
+  ('tci-supply','permatex','distributor'),
+  ('tci-supply','tci-supply','distributor'),
+  ('tci-supply','wd-40','distributor'),
+  -- terex (vendor)
+  ('terex','terex','authorized_dealer'),
+  -- timken (vendor)
+  ('timken','timken','authorized_dealer'),
+  -- toshiba (vendor)
+  ('toshiba','toshiba','authorized_dealer'),
+  -- tractel-solutions (vendor)
+  ('tractel-solutions','tractel-solutions','authorized_dealer'),
+  -- tsubaki (vendor)
+  ('tsubaki','tsubaki','authorized_dealer'),
+  -- vega (vendor)
+  ('vega','vega','authorized_dealer'),
+  -- volvo-ce (vendor)
+  ('volvo-ce','volvo-ce','authorized_dealer'),
+  -- wd-40 (vendor)
+  ('wd-40','wd-40','authorized_dealer'),
+  -- weg (vendor)
+  ('weg','weg','authorized_dealer'),
+  -- yaskawa-motoman (vendor)
+  ('yaskawa-motoman','yaskawa-motoman','authorized_dealer'),
+  -- zerk-generic (vendor)
+  ('zerk-generic','zerk-generic','authorized_dealer'),
+  -- zoro (distributor)
+  ('zoro','baldor','distributor'),
+  ('zoro','filtermart','distributor'),
+  ('zoro','gates','distributor'),
+  ('zoro','mobil','distributor'),
+  ('zoro','skf','distributor'),
+  ('zoro','tci-supply','distributor'),
+  ('zoro','wd-40','distributor'),
+  ('zoro','zoro','distributor')
+) AS v(user_slug, brand_slug, role)
+JOIN "indB2B".users u ON u.slug = v.user_slug
+JOIN "indB2B".brands b ON b.slug = v.brand_slug
+ON CONFLICT (user_id, brand_id) DO NOTHING;
