@@ -4,7 +4,7 @@
 > The `indB2B`.sessions table is the DB-side audit log — insert a row there too.
 
 ## Last Updated
-2026-06-29 (session 32)
+2026-06-29 (session 33)
 
 ## Project Scope
 **Frontend scaffolded and live on GitHub Pages. Full equipment click path working end-to-end.**
@@ -16,23 +16,21 @@
 
 **Tables (19):** brand_aliases, brand_categories, brand_equipment_links, brand_industry_links, brands, carriers, equipment_types, industries, sessions, shipment_legs, shipments, shipping_nodes, supply_chain_links, user_brand_links, user_equipment_links, user_industry_links, users, zip_distances, zip_distance_queue
 
-**Additional tables in schema (not in docs/SCHEMA.md yet):** supplier_zip_codes
-
-**Views (6):** v_brands_full, v_equipment_brands (updated — includes `brand_slugs` array), v_shipment_cost_summary, v_shipment_legs_costed, v_supply_chain_graph, supplier_zip_codes (compat view)
+**Views (6):** v_brands_full, v_equipment_brands (includes `brand_slugs` array), v_shipment_cost_summary, v_shipment_legs_costed, v_supply_chain_graph, supplier_zip_codes (compat view over shipping_nodes WHERE node_type='supplier')
 
 **Edge Functions (1):** get-distance (Nominatim lazy-load cache)
 
 **RLS:** Enabled on all 19 tables ✅ — all policies explicitly grant `anon` role
 
 ### Live DB Counts (as of 2026-06-29)
-101 brands / 13 categories / 5 industries / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 59 shipping nodes / 101 users (78 vendor, 23 distributor) / 215 user_brand_links / 250 user_industry_links / 606 user_equipment_links / 47 supply_chain_links / 0 zip_distances / 0 zip_distance_queue / 31 sessions
+101 brands / 13 categories / 5 industries / 64 equipment types / 606 brand-equipment links / 250 brand-industry links / 14 carriers / 59 shipping nodes (supplier) / 101 users (78 vendor, 23 distributor) / 215 user_brand_links / 250 user_industry_links / 606 user_equipment_links / 47 supply_chain_links / 0 zip_distances / 0 zip_distance_queue / 33 sessions
 
 ### File Status
 | File | Status |
 |------|--------|
-| `schema/indB2B_schema.sql` | ⚠️ Needs sync — v_equipment_brands rebuilt (session 31); supplier_zip_codes table missing |
-| `data/brands_seed.sql` | ⚠️ Needs sync — 140+ distributor brand links added (session 31) |
-| `docs/SCHEMA.md` | ⚠️ Needs sync — v_equipment_brands brand_slugs column; supplier_zip_codes table |
+| `schema/indB2B_schema.sql` | ✅ In sync (verified session 33) |
+| `data/brands_seed.sql` | ✅ In sync (verified session 33) |
+| `docs/SCHEMA.md` | ⬜ Not yet verified this session — low priority |
 | `docs/DATA_CATALOG.md` | ✅ In sync |
 | `docs/FRONTEND_GUIDE.md` | ✅ Current |
 | `docs/index.html` | ✅ Current |
@@ -40,7 +38,7 @@
 | `docs/brand.html` | ✅ Updated (session 31) |
 | `docs/distributor.html` | ✅ Verified functional (session 31) |
 | `docs/network.html` | ✅ Current |
-| `docs/find.html` | ✅ Wired, needs live test |
+| `docs/find.html` | ✅ Wired — live test in progress (session 33) |
 | `docs/js/equipment.js` | ✅ Fixed (session 31) |
 | `docs/js/brand.js` | ✅ Fixed + slug normalizer (session 31) |
 | `docs/js/network.js` | ✅ Current |
@@ -56,15 +54,16 @@
 | ✅ | Equipment page click path: category→type→brand→distributor | Done session 31 |
 | ✅ | Brand page: add Vendor section (who makes it) | Done session 31 |
 | ✅ | Distributor profile page (Screen 3) — verify data flows | Done session 31 |
-| ⬜ 1 | Find Near Me (Screen 5) — live test with real zip input | Next |
-| ⬜ 2 | Sync schema/indB2B_schema.sql + docs/SCHEMA.md (supplier_zip_codes, v_equipment_brands) | Next |
-| ⬜ 3 | Sync data/brands_seed.sql (140+ distributor brand links from session 31) | Next |
-| ⬜ 4 | Graph tooltip: add company logo + website link | Backlog |
-| ⬜ 5 | Data refinement: fix brand website URLs (e.g. Schaeffler → EN site) | Backlog |
+| ✅ | Sync schema/indB2B_schema.sql (verified clean) | Done session 33 |
+| ✅ | Sync data/brands_seed.sql (verified clean) | Done session 33 |
+| 🔄 1 | Find Near Me (Screen 5) — live test with real zip input | In progress session 33 |
+| ⬜ 2 | Graph tooltip: add company logo + website link | Backlog |
+| ⬜ 3 | Data refinement: fix brand website URLs (e.g. Schaeffler → EN site) | Backlog |
+| ⬜ 4 | Verify docs/SCHEMA.md still current | Backlog |
 
 ## Known Data Issues
 - Schaeffler website stored as `https://www.schaeffler.com/fork/` — routes to German site. Defer to data refinement pass.
-- `user_brand_links` count (215) is lower than expected (101 vendor + ~140 distributor = ~241). May indicate some distributor brand links did not seed correctly — worth verifying.
+- `user_brand_links` count (215) is lower than expected (101 vendor + ~140 distributor = ~241). May indicate some distributor brand links did not seed correctly — worth verifying next data session.
 
 ## Phase 2 Backlog (deferred)
 
@@ -107,6 +106,17 @@ See `docs/FRONTEND_GUIDE.md` for query patterns per screen.
 - Now includes `brand_slugs` array (sorted by b.name, parallel to `brands` name array)
 - Filter on `equipment_slug` (not `slug`)
 
+## Completed — 2026-06-29 (Session 33)
+- [x] Verified schema/indB2B_schema.sql fully in sync (19 tables + 6 views — perfect match)
+- [x] Verified data/brands_seed.sql fully in sync (101 brands, 13 categories, 5 industries, 5 aliases, 59 supplier zip codes, 14 carriers, 215 user_brand_links)
+- [x] Cleared all three ⚠️ sync flags in SESSION_HANDOFF.md and Key File Locations table
+- [x] Find Near Me live test in progress
+
+## Completed — 2026-06-29 (Session 32)
+- [x] Audited SESSION_HANDOFF.md against live schema and file tree
+- [x] Updated DB counts, file status table, and Next Steps priority list
+- [x] Flagged user_brand_links count discrepancy (215 vs expected ~241) as known issue
+
 ## Completed — 2026-06-26 (Session 31)
 - [x] Fixed `equipment.js`: filter column `slug` → `equipment_slug`
 - [x] Rebuilt `v_equipment_brands`: added `brand_slugs` array, both arrays sorted by `b.name`
@@ -117,11 +127,6 @@ See `docs/FRONTEND_GUIDE.md` for query patterns per screen.
 - [x] Added Vendor section to brand profile page (brand.js + brand.html)
 - [x] Verified distributor profile page data flows — 7 brands, 2 industries, 9 equipment types for Royal Bearing test case
 - [x] Full click path verified: category → type → brand → distributor ✅
-
-## Completed — 2026-06-29 (Session 32)
-- [x] Audited SESSION_HANDOFF.md against live schema and file tree
-- [x] Updated DB counts, file status table, and Next Steps priority list
-- [x] Flagged user_brand_links count discrepancy (215 vs expected ~241) as known issue
 
 ## Completed — 2026-06-26 (Sessions 24–30)
 - [x] Created `v_supply_chain_graph` view (session 24)
@@ -147,10 +152,10 @@ See `docs/FRONTEND_GUIDE.md` for query patterns per screen.
 ## Key File Locations
 
 | File | Purpose |
-|------|---------|
-| `schema/indB2B_schema.sql` | Full DDL — ⚠️ needs sync for v_equipment_brands + supplier_zip_codes |
-| `data/brands_seed.sql` | Cumulative seed data — ⚠️ needs distributor brand links added |
-| `docs/SCHEMA.md` | Human-readable schema reference — ⚠️ needs sync |
+|------|---------| 
+| `schema/indB2B_schema.sql` | Full DDL — ✅ in sync |
+| `data/brands_seed.sql` | Cumulative seed data — ✅ in sync |
+| `docs/SCHEMA.md` | Human-readable schema reference |
 | `docs/FRONTEND_GUIDE.md` | Public API surface + screen query map |
 | `docs/DATA_CATALOG.md` | Brand/category index |
 | `docs/index.html` | Home page |
