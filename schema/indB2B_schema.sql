@@ -2,7 +2,7 @@
 -- indB2B Schema — Industrial Maintenance B2B Platform
 -- PostgreSQL 14+  |  Supabase-compatible
 -- Run this file to initialize the indB2B schema from scratch.
--- Last synced: 2026-06-26 (sessions 1–26)
+-- Last synced: 2026-06-29 (sessions 1–32)
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS "indB2B";
@@ -339,7 +339,8 @@ CREATE INDEX IF NOT EXISTS idx_supply_chain_links_type     ON "indB2B".supply_ch
 -- VIEWS
 -- ============================================================
 
--- supplier_zip_codes: compat view; exposes user_id after session 26
+-- supplier_zip_codes: compat view over shipping_nodes WHERE node_type = 'supplier'
+-- Exposes user_id after session 26. Used by AppSheet reference library.
 CREATE OR REPLACE VIEW "indB2B".supplier_zip_codes AS
 SELECT id, brand_id, user_id, zip_code, city, state_code, is_primary, notes, created_at, updated_at
 FROM "indB2B".shipping_nodes
@@ -366,14 +367,20 @@ LEFT JOIN "indB2B".equipment_types        et  ON et.id = bel.equipment_type_id
 GROUP BY b.id, b.name, b.slug, b.website, b.notes, b.is_active,
          bc.name, bc.slug, pb.name, b.created_at, b.updated_at;
 
+-- v_equipment_brands (updated session 31): added brand_slugs array parallel to brands,
+-- both sorted by b.name. Filter on equipment_slug (not slug).
 CREATE OR REPLACE VIEW "indB2B".v_equipment_brands AS
 SELECT
-  et.id, et.name AS equipment_type, et.slug AS equipment_slug,
-  et.description, et.is_active,
+  et.id,
+  et.name        AS equipment_type,
+  et.slug        AS equipment_slug,
+  et.description,
+  et.is_active,
   bc.name        AS category,
   bc.slug        AS category_slug,
-  ARRAY_AGG(DISTINCT b.name ORDER BY b.name) FILTER (WHERE b.name IS NOT NULL) AS brands,
-  COUNT(DISTINCT b.id) AS brand_count
+  array_agg(b.name ORDER BY b.name) FILTER (WHERE b.name IS NOT NULL) AS brands,
+  array_agg(b.slug ORDER BY b.name) FILTER (WHERE b.slug IS NOT NULL) AS brand_slugs,
+  count(DISTINCT b.id) AS brand_count
 FROM "indB2B".equipment_types et
 LEFT JOIN "indB2B".brand_categories      bc  ON bc.id = et.category_id
 LEFT JOIN "indB2B".brand_equipment_links bel ON bel.equipment_type_id = et.id

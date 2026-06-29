@@ -1,6 +1,6 @@
 # indB2B Schema Reference
 
-> Last updated: 2026-06-26 (sessions 1–26)
+> Last updated: 2026-06-29 (sessions 1–32)
 
 ## Tables (19)
 
@@ -86,7 +86,7 @@
 | updated_at | timestamptz | auto-trigger |
 
 ### shipping_nodes
-Generalized location node. `supplier_zip_codes` is a compatibility view. `user_id` added session 26.
+Generalized location node. `supplier_zip_codes` is a compatibility view over this table (`WHERE node_type = 'supplier'`). `user_id` added session 26.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -240,13 +240,39 @@ Graph edge table representing who supplies whom.
 ## Views (6)
 
 ### supplier_zip_codes
-Compat view over `shipping_nodes WHERE node_type = 'supplier'`. Now exposes `user_id` (session 26).
+Compat view over `shipping_nodes WHERE node_type = 'supplier'`. Exposes `user_id` (session 26). Used by AppSheet reference library. **This is a view, not a table.**
+
+| Column | Sourced from |
+|--------|--------------|
+| id | shipping_nodes.id |
+| brand_id | shipping_nodes.brand_id |
+| user_id | shipping_nodes.user_id |
+| zip_code | shipping_nodes.zip_code |
+| city | shipping_nodes.city |
+| state_code | shipping_nodes.state_code |
+| is_primary | shipping_nodes.is_primary |
+| notes | shipping_nodes.notes |
+| created_at | shipping_nodes.created_at |
+| updated_at | shipping_nodes.updated_at |
 
 ### v_brands_full
 One row per brand with aggregated aliases, industries, and equipment types.
 
-### v_equipment_brands
-One row per equipment type with aggregated brand list and count.
+### v_equipment_brands _(updated session 31)_
+One row per equipment type with aggregated brand names, brand slugs, and count. Both arrays sorted by `b.name`. Filter on `equipment_slug` column (not `slug`).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | equipment_types.id |
+| equipment_type | text | equipment_types.name |
+| equipment_slug | text | equipment_types.slug — **filter on this** |
+| description | text | |
+| is_active | boolean | |
+| category | text | brand_categories.name |
+| category_slug | text | brand_categories.slug |
+| brands | text[] | Brand names, sorted by name |
+| brand_slugs | text[] | Brand slugs, sorted by name (parallel to brands) |
+| brand_count | bigint | Count of distinct active brands |
 
 ### v_shipment_cost_summary
 Estimated freight cost rollup per shipment.
